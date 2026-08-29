@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 260" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19" />
+      <stop offset="50%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+    <linearGradient id="text-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C084FC" />
+      <stop offset="50%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <linearGradient id="pill-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.9" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="soft-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#334155" stroke-width="0.5" stroke-opacity="0.3" />
+    </pattern>
+    <style>
+      @keyframes floatSlow {
+        0%, 100% { transform: translateY(0px) scale(1); }
+        50% { transform: translateY(-8px) scale(1.03); }
+      }
+      @keyframes pulseGlow {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 0.8; }
+      }
+      @keyframes dashMove {
+        0% { stroke-dashoffset: 200; }
+        100% { stroke-dashoffset: 0; }
+      }
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+      @keyframes nodePulse {
+        0%, 100% { r: 4px; opacity: 0.7; }
+        50% { r: 6px; opacity: 1; }
+      }
+      .floating-group { animation: floatSlow 6s ease-in-out infinite; }
+      .glow-circle { animation: pulseGlow 4s ease-in-out infinite; }
+      .path-animated {
+        stroke-dasharray: 8 6;
+        animation: dashMove 10s linear infinite;
+      }
+      .title-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 800;
+        font-size: 44px;
+        fill: url(#text-grad);
+        letter-spacing: -0.5px;
+      }
+      .subtitle-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 500;
+        font-size: 16px;
+        fill: #94A3B8;
+        letter-spacing: 0.2px;
+      }
+      .badge-text {
+        font-family: 'Fira Code', monospace, sans-serif;
+        font-weight: 600;
+        font-size: 12.5px;
+        fill: #E2E8F0;
+      }
+      .tag-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 700;
+        font-size: 11px;
+        fill: #A855F7;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+    </style>
+  </defs>
+
+  <!-- Background container -->
+  <rect width="850" height="260" rx="16" fill="url(#bg-grad)" stroke="#334155" stroke-width="1.5" />
+  <rect width="850" height="260" rx="16" fill="url(#grid)" />
+
+  <!-- Ambient glowing decorative spheres -->
+  <circle cx="120" cy="60" r="70" fill="#7C3AED" opacity="0.15" filter="url(#glow)" class="glow-circle" />
+  <circle cx="740" cy="200" r="90" fill="#2563EB" opacity="0.15" filter="url(#glow)" class="glow-circle" style="animation-delay: 2s;" />
+  <circle cx="700" cy="50" r="50" fill="#10B981" opacity="0.1" filter="url(#glow)" class="glow-circle" style="animation-delay: 1s;" />
+
+  <!-- Animated data network lines in background -->
+  <g opacity="0.35">
+    <path d="M 50 200 Q 200 160 380 210 T 800 180" fill="none" stroke="#60A5FA" stroke-width="1.5" class="path-animated" />
+    <path d="M 80 230 Q 300 240 500 190 T 780 220" fill="none" stroke="#A855F7" stroke-width="1.5" class="path-animated" style="animation-direction: reverse;" />
+    <circle cx="200" cy="176" r="4" fill="#60A5FA" class="glow-circle" />
+    <circle cx="500" cy="190" r="4" fill="#A855F7" class="glow-circle" />
+    <circle cx="680" cy="198" r="4" fill="#34D399" class="glow-circle" />
+  </g>
+
+  <!-- Top badge / Tag -->
+  <g transform="translate(425, 42)" text-anchor="middle">
+    <rect x="-105" y="-14" width="210" height="24" rx="12" fill="#1E1B4B" stroke="#6D28D9" stroke-width="1" />
+    <text y="3" class="tag-text">DATACRAFT SUITE 3.0</text>
+  </g>
+
+  <!-- Main Title & Glowing Subtitle -->
+  <g class="floating-group">
+    <text x="425" y="98" text-anchor="middle" class="title-text" filter="url(#soft-glow)">DataIQ Pro</text>
+    <text x="425" y="132" text-anchor="middle" class="subtitle-text">
+      From Raw CSV &amp; Excel to Production-Ready ML Insights — Completely Inside Your Browser
+    </text>
+  </g>
+
+  <!-- 3 Interactive-style Feature Pills / Badges -->
+  <g transform="translate(70, 168)">
+    <!-- Pill 1: Web Workers -->
+    <g transform="translate(0, 0)">
+      <rect x="0" y="0" width="220" height="42" rx="10" fill="url(#pill-bg)" stroke="#475569" stroke-width="1" />
+      <circle cx="24" cy="21" r="5" fill="#34D399" filter="url(#soft-glow)">
+        <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" />
+      </circle>
+      <text x="42" y="26" class="badge-text">200K+ Rows in &lt;500ms</text>
+    </g>
+
+    <!-- Pill 2: Zero-Server Privacy -->
+    <g transform="translate(245, 0)">
+      <rect x="0" y="0" width="220" height="42" rx="10" fill="url(#pill-bg)" stroke="#475569" stroke-width="1" />
+      <circle cx="24" cy="21" r="5" fill="#60A5FA" filter="url(#soft-glow)">
+        <animate attributeName="r" values="4;6;4" dur="2.5s" repeatCount="indefinite" />
+      </circle>
+      <text x="42" y="26" class="badge-text">100% Zero-Server Privacy</text>
+    </g>
+
+    <!-- Pill 3: Browser-Native ML -->
+    <g transform="translate(490, 0)">
+      <rect x="0" y="0" width="220" height="42" rx="10" fill="url(#pill-bg)" stroke="#475569" stroke-width="1" />
+      <circle cx="24" cy="21" r="5" fill="#C084FC" filter="url(#soft-glow)">
+        <animate attributeName="r" values="4;6;4" dur="3s" repeatCount="indefinite" />
+      </circle>
+      <text x="42" y="26" class="badge-text">Browser-Native ML Engine</text>
+    </g>
+  </g>
+
+  <!-- Bottom animated accent bar -->
+  <rect x="0" y="256" width="850" height="4" fill="url(#text-grad)" rx="2" />
+</svg>

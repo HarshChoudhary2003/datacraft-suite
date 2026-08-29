@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" width="100%" height="100%">
+  <defs>
+    <linearGradient id="panel-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <linearGradient id="node-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+    <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="50%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <filter id="node-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <style>
+      .node-box {
+        fill: url(#node-bg);
+        stroke: #475569;
+        stroke-width: 1.5px;
+        transition: all 0.3s ease;
+      }
+      .node-box:hover {
+        stroke: #A855F7;
+      }
+      .node-title {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 15px;
+        font-weight: 700;
+        fill: #F8FAFC;
+      }
+      .node-desc {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 11.5px;
+        font-weight: 400;
+        fill: #94A3B8;
+      }
+      .connector {
+        fill: none;
+        stroke: url(#line-grad);
+        stroke-width: 2.5px;
+        stroke-dasharray: 6 4;
+        animation: flowDash 15s linear infinite;
+      }
+      @keyframes flowDash {
+        0% { stroke-dashoffset: 200; }
+        100% { stroke-dashoffset: 0; }
+      }
+      @keyframes pulseDot {
+        0%, 100% { r: 5px; opacity: 0.8; }
+        50% { r: 7.5px; opacity: 1; }
+      }
+      .flow-dot {
+        animation: pulseDot 2s infinite ease-in-out;
+      }
+    </style>
+  </defs>
+
+  <!-- Outer container -->
+  <rect width="900" height="320" rx="16" fill="url(#panel-bg)" stroke="#334155" stroke-width="1.5" />
+
+  <!-- Title block -->
+  <text x="450" y="38" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="700" fill="#A855F7" letter-spacing="2">
+    DATACRAFT PRO ZERO-SERVER BROWSER ARCHITECTURE
+  </text>
+  <text x="450" y="58" text-anchor="middle" font-family="'Inter', sans-serif" font-size="12" fill="#64748B">
+    All computation executes locally using Web Workers, WebAssembly, and Client-Side ML Libraries
+  </text>
+
+  <!-- Connectors between 4 major pipeline stages -->
+  <!-- Stage 1 -> Stage 2 -->
+  <path d="M 190 170 L 250 170" class="connector" />
+  <polygon points="248,165 258,170 248,175" fill="#8B5CF6" />
+  
+  <!-- Stage 2 -> Stage 3 -->
+  <path d="M 420 170 L 480 170" class="connector" />
+  <polygon points="478,165 488,170 478,175" fill="#8B5CF6" />
+  
+  <!-- Stage 3 -> Stage 4 -->
+  <path d="M 650 170 L 710 170" class="connector" />
+  <polygon points="708,165 718,170 708,175" fill="#10B981" />
+
+  <!-- Animated data packets traveling along connectors -->
+  <circle r="4" fill="#60A5FA" filter="url(#node-glow)">
+    <animateMotion path="M 190 170 L 250 170" dur="2s" repeatCount="indefinite" />
+  </circle>
+  <circle r="4" fill="#C084FC" filter="url(#node-glow)">
+    <animateMotion path="M 420 170 L 480 170" dur="2s" repeatCount="indefinite" />
+  </circle>
+  <circle r="4" fill="#34D399" filter="url(#node-glow)">
+    <animateMotion path="M 650 170 L 710 170" dur="2s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- Stage 1: Ingestion & Parsing -->
+  <g transform="translate(30, 95)">
+    <rect width="160" height="150" rx="12" class="node-box" />
+    <circle cx="28" cy="28" r="14" fill="#2563EB" opacity="0.2" />
+    <text x="28" y="33" text-anchor="middle" font-size="14" font-weight="bold" fill="#60A5FA">1</text>
+    <text x="80" y="33" class="node-title" text-anchor="middle">Local Ingestion</text>
+    
+    <text x="15" y="65" class="node-desc">• CSV &amp; Excel (.xlsx)</text>
+    <text x="15" y="85" class="node-desc">• Dedicated Web Worker</text>
+    <text x="15" y="105" class="node-desc">• Non-Blocking UI</text>
+    <text x="15" y="125" class="node-desc">• 200k Rows / &lt;500ms</text>
+  </g>
+
+  <!-- Stage 2: Data Refinery & PII Shield -->
+  <g transform="translate(260, 95)">
+    <rect width="160" height="150" rx="12" class="node-box" />
+    <circle cx="28" cy="28" r="14" fill="#7C3AED" opacity="0.2" />
+    <text x="28" y="33" text-anchor="middle" font-size="14" font-weight="bold" fill="#C084FC">2</text>
+    <text x="85" y="33" class="node-title" text-anchor="middle">Data Refinery</text>
+    
+    <text x="15" y="65" class="node-desc">• Dry-Run Commit Engine</text>
+    <text x="15" y="85" class="node-desc">• IQR Outlier &amp; Impute</text>
+    <text x="15" y="105" class="node-desc">• PII Auto-Redaction</text>
+    <text x="15" y="125" class="node-desc">• Immutable Git-History</text>
+  </g>
+
+  <!-- Stage 3: Browser ML & Local LLM -->
+  <g transform="translate(490, 95)">
+    <rect width="160" height="150" rx="12" class="node-box" />
+    <circle cx="28" cy="28" r="14" fill="#0D9488" opacity="0.2" />
+    <text x="28" y="33" text-anchor="middle" font-size="14" font-weight="bold" fill="#2DD4BF">3</text>
+    <text x="85" y="33" class="node-title" text-anchor="middle">ML &amp; LLM Studio</text>
+    
+    <text x="15" y="65" class="node-desc">• 8 Native ML Models</text>
+    <text x="15" y="85" class="node-desc">• WebWorker Training</text>
+    <text x="15" y="105" class="node-desc">• @mlc-ai/web-llm AI</text>
+    <text x="15" y="125" class="node-desc">• Zero Data Egress</text>
+  </g>
+
+  <!-- Stage 4: Interactive EDA & Export -->
+  <g transform="translate(720, 95)">
+    <rect width="150" height="150" rx="12" class="node-box" />
+    <circle cx="28" cy="28" r="14" fill="#059669" opacity="0.2" />
+    <text x="28" y="33" text-anchor="middle" font-size="14" font-weight="bold" fill="#34D399">4</text>
+    <text x="80" y="33" class="node-title" text-anchor="middle">EDA &amp; Exports</text>
+    
+    <text x="15" y="65" class="node-desc">• Dynamic Heatmaps</text>
+    <text x="15" y="85" class="node-desc">• CI/CD Benchmarks</text>
+    <text x="15" y="105" class="node-desc">• Jupyter (.ipynb) Gen</text>
+    <text x="15" y="125" class="node-desc">• HTML / CSV / PDF</text>
+  </g>
+
+  <!-- Bottom privacy badge banner inside SVG -->
+  <g transform="translate(150, 275)">
+    <rect width="600" height="28" rx="14" fill="#1E1B4B" stroke="#6D28D9" stroke-width="0.8" />
+    <text x="300" y="18" text-anchor="middle" font-family="'Inter', sans-serif" font-size="11.5" font-weight="600" fill="#E2E8F0">
+      🔒 PRIVACY GUARANTEED: ZERO NETWORK EGRESS FOR CLIENT ROWS AND PII PAYLOADS
+    </text>
+  </g>
+</svg>

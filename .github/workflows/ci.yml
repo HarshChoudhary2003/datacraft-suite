@@ -1,0 +1,138 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile || bun install
+      - name: Lockfile integrity (overrides incl. seroval must be resolved)
+        run: node scripts/lockfile-integrity.mjs --json reports/lockfile.json
+      - name: Generate SBOM (CycloneDX) and assert seroval is patched
+        run: node scripts/gen-sbom.mjs --out reports/sbom.json --assert seroval@1.6.0
+      - name: Dependency vulnerability monitor (fail on high/critical)
+        run: node scripts/dep-audit.mjs --level high --json reports/audit.json
+      - name: Upload SBOM + supply-chain reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-and-supply-chain
+          path: |
+            reports/sbom.json
+            reports/lockfile.json
+            reports/audit.json
+          if-no-files-found: warn
+
+  ui:
+    runs-on: ubuntu-latest
+    needs: [supply-chain]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile || bun install
+      - name: Typecheck
+        run: bunx tsc --noEmit
+      - name: Unit tests (incl. notebook/dashboard security regression)
+        run: bunx vitest run
+      - name: Security regression suite (export escaping + CSP)
+        run: bunx vitest run src/lib/__tests__/security-regression.test.ts src/lib/__tests__/notebook-xss.test.ts
+
+  insights-smoke:
+    runs-on: ubuntu-latest
+    needs: [ui]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile || bun install
+      - name: Start dev server
+        run: bun run dev --port 8080 --host 127.0.0.1 > devserver.log 2>&1 &
+      - name: Insights smoke test (fail on any 5xx)
+        env:
+          SMOKE_BASE_URL: "http://127.0.0.1:8080"
+          SMOKE_RETRIES: "30"
+          SMOKE_DELAY_MS: "2000"
+        run: node scripts/smoke-insights.mjs
+      - name: Dump server log on failure
+        if: failure()
+        run: cat devserver.log || true
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs: [ui]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile || bun install
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+      - name: Start dev server
+        run: bun run dev --port 8080 --host 127.0.0.1 > devserver.log 2>&1 &
+      - name: E2E smoke flow (upload → correlation → export → codegen)
+        env:
+          SMOKE_BASE_URL: "http://127.0.0.1:8080"
+          SMOKE_RETRIES: "40"
+          SMOKE_DELAY_MS: "2000"
+        run: node scripts/smoke-e2e.mjs
+      - name: Dump server log on failure
+        if: failure()
+        run: cat devserver.log || true
+
+  backend-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install backend deps
+        run: |
+          pip install fastapi uvicorn pydantic pandas numpy scikit-learn httpx pytest
+      - name: Run backend e2e (DL/ETL pipeline)
+        run: pytest backend/tests -q
+
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: [ui, backend-e2e]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install deps
+        run: |
+          bun install --frozen-lockfile || bun install
+          pip install fastapi uvicorn pydantic pandas numpy scikit-learn httpx matplotlib
+      - name: Generate dataset
+        run: node loadtest/gen_csv.mjs --rows 60000 --out loadtest/data/large.csv
+      - name: UI render-pipeline benchmark
+        run: node loadtest/ui_bench.mjs --rows 50000,150000 --json loadtest/reports/ui.json
+      - name: Backend latency + accuracy benchmark
+        run: python loadtest/backend_bench.py --rows 20000 --requests 12 --json loadtest/reports/backend.json
+      - name: Enforce performance + accuracy thresholds
+        env:
+          BENCH_MAX_TOTAL_MS: "6000"
+          BENCH_MIN_ACCURACY: "0.80"
+          BENCH_MAX_P99_MS: "4000"
+        run: node loadtest/ci_guard.mjs --ui loadtest/reports/ui.json --backend loadtest/reports/backend.json
+      - name: Generate benchmark report (HTML + PDF)
+        run: python loadtest/gen_report.py --rows 40000 --sweep 60000,150000 --requests 10
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: |
+            loadtest/reports/benchmark_report.html
+            loadtest/reports/benchmark_report.pdf
+            loadtest/reports/ui.json
+            loadtest/reports/backend.json
+          if-no-files-found: warn

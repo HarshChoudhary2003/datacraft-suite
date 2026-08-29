@@ -1,0 +1,314 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 440" width="100%" height="100%">
+  <defs>
+    <linearGradient id="wf-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090D16" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+    <linearGradient id="step-grad-1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#8B5CF6" />
+    </linearGradient>
+    <linearGradient id="step-grad-2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+    <linearGradient id="step-grad-3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EC4899" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.95" />
+    </linearGradient>
+    <filter id="wf-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="soft-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <style>
+      .wf-title {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        fill: #C084FC;
+        letter-spacing: 2px;
+      }
+      .wf-subtitle {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 12px;
+        fill: #94A3B8;
+      }
+      .step-node {
+        fill: url(#card-grad);
+        stroke: #334155;
+        stroke-width: 1.5px;
+        transition: all 0.3s ease;
+      }
+      .step-num-bg {
+        fill: #7C3AED;
+      }
+      .step-num-text {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 11px;
+        font-weight: 800;
+        fill: #FFFFFF;
+      }
+      .step-label {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 12.5px;
+        font-weight: 700;
+        fill: #F8FAFC;
+      }
+      .step-sub {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 10px;
+        fill: #94A3B8;
+      }
+      .flow-path {
+        fill: none;
+        stroke-width: 2px;
+        stroke-dasharray: 6 4;
+        animation: flowDash 12s linear infinite;
+      }
+      .flow-path-1 { stroke: url(#step-grad-1); }
+      .flow-path-2 { stroke: url(#step-grad-2); }
+      .flow-path-3 { stroke: url(#step-grad-3); }
+
+      @keyframes flowDash {
+        0% { stroke-dashoffset: 120; }
+        100% { stroke-dashoffset: 0; }
+      }
+      @keyframes pulseRole {
+        0%, 100% { opacity: 0.7; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.03); }
+      }
+      .role-pill {
+        font-family: 'Fira Code', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        fill: #E2E8F0;
+      }
+    </style>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="950" height="440" rx="16" fill="url(#wf-bg)" stroke="#334155" stroke-width="1.5" />
+
+  <!-- Top Header Block -->
+  <text x="475" y="32" text-anchor="middle" class="wf-title">
+    ⚡ DATACRAFT PRO: 11-STAGE END-TO-END APPLICATION WORKFLOW
+  </text>
+  <text x="475" y="52" text-anchor="middle" class="wf-subtitle">
+    Analyzed from https://datacraft-suite.vercel.app/ — 100% In-Browser Execution Across 6 Role Personas
+  </text>
+
+  <!-- 6 Dynamic Role Selector Bar -->
+  <g transform="translate(60, 68)">
+    <rect x="0" y="0" width="830" height="32" rx="16" fill="#0F172A" stroke="#334155" stroke-width="1" />
+    <text x="15" y="20" font-family="'Inter', sans-serif" font-size="10.5" font-weight="700" fill="#A855F7">ROLE ENGINE:</text>
+
+    <!-- Role 1: Analyst -->
+    <g transform="translate(100, 4)">
+      <rect width="105" height="24" rx="12" fill="#1E1B4B" stroke="#38BDF8" stroke-width="1" />
+      <text x="52" y="16" text-anchor="middle" class="role-pill" fill="#38BDF8">📊 Analyst</text>
+    </g>
+    <!-- Role 2: BA -->
+    <g transform="translate(215, 4)">
+      <rect width="95" height="24" rx="12" fill="#1E1B4B" stroke="#F43F5E" stroke-width="1" />
+      <text x="47" y="16" text-anchor="middle" class="role-pill" fill="#F43F5E">💼 BA</text>
+    </g>
+    <!-- Role 3: Scientist -->
+    <g transform="translate(320, 4)">
+      <rect width="115" height="24" rx="12" fill="#1E1B4B" stroke="#C084FC" stroke-width="1" />
+      <text x="57" y="16" text-anchor="middle" class="role-pill" fill="#C084FC">🔬 Scientist</text>
+    </g>
+    <!-- Role 4: ML -->
+    <g transform="translate(445, 4)">
+      <rect width="95" height="24" rx="12" fill="#1E1B4B" stroke="#34D399" stroke-width="1" />
+      <text x="47" y="16" text-anchor="middle" class="role-pill" fill="#34D399">🤖 ML</text>
+    </g>
+    <!-- Role 5: AI -->
+    <g transform="translate(550, 4)">
+      <rect width="95" height="24" rx="12" fill="#1E1B4B" stroke="#FBBF24" stroke-width="1" />
+      <text x="47" y="16" text-anchor="middle" class="role-pill" fill="#FBBF24">🧠 AI</text>
+    </g>
+    <!-- Role 6: DE -->
+    <g transform="translate(655, 4)">
+      <rect width="100" height="24" rx="12" fill="#1E1B4B" stroke="#60A5FA" stroke-width="1" />
+      <text x="50" y="16" text-anchor="middle" class="role-pill" fill="#60A5FA">🛠️ DE</text>
+    </g>
+  </g>
+
+  <!-- Connectors Row 1 (Top Row 1 to 4) -->
+  <path d="M 215 155 L 265 155" class="flow-path flow-path-1" />
+  <path d="M 425 155 L 475 155" class="flow-path flow-path-1" />
+  <path d="M 635 155 L 685 155" class="flow-path flow-path-1" />
+
+  <!-- Animated data particles Row 1 -->
+  <circle r="4" fill="#60A5FA" filter="url(#soft-glow)">
+    <animateMotion path="M 215 155 L 265 155" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+  <circle r="4" fill="#A855F7" filter="url(#soft-glow)">
+    <animateMotion path="M 425 155 L 475 155" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+  <circle r="4" fill="#EC4899" filter="url(#soft-glow)">
+    <animateMotion path="M 635 155 L 685 155" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- Connector Row 1 to Row 2 Drop -->
+  <path d="M 760 195 Q 760 235 760 235 L 760 235" class="flow-path flow-path-2" />
+
+  <!-- ROW 1 NODES (Steps 01 to 04) -->
+  <!-- Step 01: Ingestion -->
+  <g transform="translate(55, 115)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#2563EB" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">01</text>
+    <text x="42" y="26" class="step-label" fill="#60A5FA">Upload (/)</text>
+    <text x="15" y="48" class="step-sub">• CSV, XLSX, JSON, TSV</text>
+    <text x="15" y="63" class="step-sub">• Web Worker Parsing</text>
+  </g>
+
+  <!-- Step 02: Overview -->
+  <g transform="translate(265, 115)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#7C3AED" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">02</text>
+    <text x="42" y="26" class="step-label">Overview</text>
+    <text x="15" y="48" class="step-sub">• Schema &amp; Quality Score</text>
+    <text x="15" y="63" class="step-sub">• Missingness Profiling</text>
+  </g>
+
+  <!-- Step 03: Data Prep -->
+  <g transform="translate(475, 115)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#C084FC" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">03</text>
+    <text x="42" y="26" class="step-label">Data Prep (/prep)</text>
+    <text x="15" y="48" class="step-sub">• Auto-clean &amp; Dedupe</text>
+    <text x="15" y="63" class="step-sub">• Imputation Rules</text>
+  </g>
+
+  <!-- Step 04: Deep Analysis -->
+  <g transform="translate(685, 115)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#DB2777" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">04</text>
+    <text x="42" y="26" class="step-label">Deep Analysis</text>
+    <text x="15" y="48" class="step-sub">• Skewness &amp; Kurtosis</text>
+    <text x="15" y="63" class="step-sub">• IQR Outlier Analysis</text>
+  </g>
+
+  <!-- Connectors Row 2 (Right to Left: 04 -> 05 -> 06 -> 07 -> 08) -->
+  <path d="M 685 260 L 635 260" class="flow-path flow-path-2" />
+  <path d="M 475 260 L 425 260" class="flow-path flow-path-2" />
+  <path d="M 265 260 L 215 260" class="flow-path flow-path-2" />
+
+  <circle r="4" fill="#F43F5E" filter="url(#soft-glow)">
+    <animateMotion path="M 685 260 L 635 260" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+  <circle r="4" fill="#10B981" filter="url(#soft-glow)">
+    <animateMotion path="M 475 260 L 425 260" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+  <circle r="4" fill="#3B82F6" filter="url(#soft-glow)">
+    <animateMotion path="M 265 260 L 215 260" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- ROW 2 NODES (Steps 05 to 07) -->
+  <!-- Step 05: Charts -->
+  <g transform="translate(685, 220)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#E11D48" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">05</text>
+    <text x="42" y="26" class="step-label">Charts (/charts)</text>
+    <text x="15" y="48" class="step-sub">• Pearson Heatmap (y=mx+c)</text>
+    <text x="15" y="63" class="step-sub">• Live Scatter &amp; Histograms</text>
+  </g>
+
+  <!-- Step 06: Feature Eng -->
+  <g transform="translate(475, 220)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#059669" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">06</text>
+    <text x="42" y="26" class="step-label">Feature Eng</text>
+    <text x="15" y="48" class="step-sub">• Encoding &amp; Scaling</text>
+    <text x="15" y="63" class="step-sub">• PII Auto-Redaction</text>
+  </g>
+
+  <!-- Step 07: AutoML -->
+  <g transform="translate(265, 220)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#0D9488" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">07</text>
+    <text x="42" y="26" class="step-label">AutoML (/train)</text>
+    <text x="15" y="48" class="step-sub">• 8 In-Browser Models</text>
+    <text x="15" y="63" class="step-sub">• WebWorker Training</text>
+  </g>
+
+  <!-- Step 08: Code Gen -->
+  <g transform="translate(55, 220)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#0284C7" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">08</text>
+    <text x="42" y="26" class="step-label">Code Gen (/codegen)</text>
+    <text x="15" y="48" class="step-sub">• 10 Production Code Tabs</text>
+    <text x="15" y="63" class="step-sub">• Python, SQL, Docker</text>
+  </g>
+
+  <!-- Connectors Row 2 to Row 3 Drop -->
+  <path d="M 135 300 Q 135 340 135 340 L 135 340" class="flow-path flow-path-3" />
+
+  <!-- Connectors Row 3 (Left to Right: 08 -> 09 -> 10 -> 11) -->
+  <path d="M 215 365 L 265 365" class="flow-path flow-path-3" />
+  <path d="M 425 365 L 475 365" class="flow-path flow-path-3" />
+  <path d="M 635 365 L 685 365" class="flow-path flow-path-3" />
+
+  <circle r="4" fill="#34D399" filter="url(#soft-glow)">
+    <animateMotion path="M 215 365 L 265 365" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+  <circle r="4" fill="#60A5FA" filter="url(#soft-glow)">
+    <animateMotion path="M 425 365 L 475 365" dur="1.5s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- ROW 3 NODES (Steps 09 to 11) -->
+  <!-- Step 09: Export -->
+  <g transform="translate(265, 325)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#16A34A" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">09</text>
+    <text x="42" y="26" class="step-label">Export (/export)</text>
+    <text x="15" y="48" class="step-sub">• Jupyter (.ipynb) Hub</text>
+    <text x="15" y="63" class="step-sub">• HTML &amp; Excel Reports</text>
+  </g>
+
+  <!-- Step 10: Guide -->
+  <g transform="translate(475, 325)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#2563EB" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">10</text>
+    <text x="42" y="26" class="step-label">Guide (/guide)</text>
+    <text x="15" y="48" class="step-sub">• Interactive Docs</text>
+    <text x="15" y="63" class="step-sub">• In-App Step Tutorials</text>
+  </g>
+
+  <!-- Step 11: Audit & Telemetry -->
+  <g transform="translate(685, 325)">
+    <rect width="160" height="80" rx="10" class="step-node" />
+    <circle cx="22" cy="22" r="11" class="step-num-bg" fill="#6366F1" />
+    <text x="22" y="26" text-anchor="middle" class="step-num-text">11</text>
+    <text x="42" y="26" class="step-label">Audit (/audit)</text>
+    <text x="15" y="48" class="step-sub">• Versioning &amp; Diffs</text>
+    <text x="15" y="63" class="step-sub">• Drift &amp; Quality Audit</text>
+  </g>
+
+  <!-- Footer Banner inside SVG -->
+  <g transform="translate(175, 415)">
+    <text x="300" y="0" text-anchor="middle" font-family="'Inter', sans-serif" font-size="10.5" font-weight="600" fill="#64748B">
+      🔒 100% PRIVATE &amp; IN-BROWSER • NO SERVER COMPUTE REQUIRED
+    </text>
+  </g>
+</svg>

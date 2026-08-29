@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19" />
+      <stop offset="50%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+    <linearGradient id="role1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="role2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312E81" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+    <linearGradient id="role3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14532D" />
+      <stop offset="100%" stop-color="#064E3B" />
+    </linearGradient>
+    <filter id="card-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <style>
+      .role-card {
+        stroke-width: 1.5px;
+        transition: all 0.3s ease;
+      }
+      @keyframes borderPulse {
+        0%, 100% { stroke-opacity: 0.5; }
+        50% { stroke-opacity: 1; }
+      }
+      .card-ba { fill: url(#role1); stroke: #38BDF8; animation: borderPulse 3s infinite; }
+      .card-ds { fill: url(#role2); stroke: #A855F7; animation: borderPulse 3s infinite; animation-delay: 1s; }
+      .card-ml { fill: url(#role3); stroke: #34D399; animation: borderPulse 3s infinite; animation-delay: 2s; }
+      
+      .role-title {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 16px;
+        font-weight: 800;
+        fill: #F8FAFC;
+      }
+      .role-subtitle {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        fill: #E2E8F0;
+      }
+      .role-item {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 11.5px;
+        fill: #94A3B8;
+      }
+      .role-badge {
+        font-family: 'Fira Code', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="240" rx="16" fill="url(#bg)" stroke="#334155" stroke-width="1.5" />
+
+  <!-- Header -->
+  <text x="450" y="32" text-anchor="middle" font-family="'Inter', sans-serif" font-size="13" font-weight="700" fill="#E2E8F0" letter-spacing="1.5">
+    🎭 DYNAMIC ROLE-AWARE ENGINE: THREE TAILORED ANALYTICAL INTERFACES
+  </text>
+
+  <!-- 3 Role Cards -->
+  <!-- Card 1: Business Analyst -->
+  <g transform="translate(25, 55)">
+    <rect width="265" height="160" rx="12" class="role-card card-ba" filter="url(#card-glow)" />
+    <rect x="18" y="15" width="85" height="20" rx="4" fill="#0369A1" />
+    <text x="60" y="29" text-anchor="middle" class="role-badge" fill="#E0F2FE">EXECUTIVE</text>
+    
+    <text x="18" y="55" class="role-title" fill="#38BDF8">Business Analyst</text>
+    <text x="18" y="75" class="role-subtitle">Focus: KPIs, Summaries &amp; ROI</text>
+    
+    <text x="18" y="100" class="role-item">✓ High-level KPI Scorecards &amp; Stats</text>
+    <text x="18" y="120" class="role-item">✓ Natural Language AI Summaries</text>
+    <text x="18" y="140" class="role-item">✓ Clean CSV &amp; Excel Workbook Export</text>
+  </g>
+
+  <!-- Card 2: Data Scientist -->
+  <g transform="translate(315, 55)">
+    <rect width="270" height="160" rx="12" class="role-card card-ds" filter="url(#card-glow)" />
+    <rect x="18" y="15" width="95" height="20" rx="4" fill="#6D28D9" />
+    <text x="65" y="29" text-anchor="middle" class="role-badge" fill="#F3E8FF">STATISTICAL</text>
+    
+    <text x="18" y="55" class="role-title" fill="#C084FC">Data Scientist</text>
+    <text x="18" y="75" class="role-subtitle">Focus: Distributions &amp; Correlation</text>
+    
+    <text x="18" y="100" class="role-item">✓ Skewness, Kurtosis &amp; IQR Analysis</text>
+    <text x="18" y="120" class="role-item">✓ Pearson Correlation Matrix Heatmaps</text>
+    <text x="18" y="140" class="role-item">✓ Jupyter (.ipynb) &amp; HTML Notebooks</text>
+  </g>
+
+  <!-- Card 3: ML Engineer -->
+  <g transform="translate(610, 55)">
+    <rect width="265" height="160" rx="12" class="role-card card-ml" filter="url(#card-glow)" />
+    <rect x="18" y="15" width="85" height="20" rx="4" fill="#047857" />
+    <text x="60" y="29" text-anchor="middle" class="role-badge" fill="#D1FAE5">ENGINEERING</text>
+    
+    <text x="18" y="55" class="role-title" fill="#34D399">ML Engineer</text>
+    <text x="18" y="75" class="role-subtitle">Focus: Pipeline Readiness &amp; Models</text>
+    
+    <text x="18" y="100" class="role-item">✓ 8 Native ML Models in Web Workers</text>
+    <text x="18" y="120" class="role-item">✓ Feature Imputation &amp; CI/CD Benchmarks</text>
+    <text x="18" y="140" class="role-item">✓ Zero-Egress Codegen &amp; Diagnostics</text>
+  </g>
+</svg>

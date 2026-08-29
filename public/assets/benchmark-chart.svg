@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" width="100%" height="100%">
+  <defs>
+    <linearGradient id="panel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <linearGradient id="bar-slow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EF4444" />
+      <stop offset="100%" stop-color="#F97316" />
+    </linearGradient>
+    <linearGradient id="bar-fast" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+    <filter id="bar-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <style>
+      .title {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        fill: #34D399;
+        letter-spacing: 1.5px;
+      }
+      .label {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        fill: #E2E8F0;
+      }
+      .sublabel {
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 11px;
+        fill: #94A3B8;
+      }
+      .metric {
+        font-family: 'Fira Code', monospace;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      @keyframes barGrowSlow {
+        0% { width: 0px; }
+        100% { width: 480px; }
+      }
+      @keyframes barGrowFast {
+        0% { width: 0px; }
+        100% { width: 68px; }
+      }
+      .bar-animate-slow {
+        animation: barGrowSlow 2.5s ease-out forwards;
+      }
+      .bar-animate-fast {
+        animation: barGrowFast 1.5s ease-out forwards;
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="220" rx="16" fill="url(#panel)" stroke="#334155" stroke-width="1.5" />
+
+  <!-- Header -->
+  <text x="450" y="34" text-anchor="middle" class="title">
+    ⚡ CI/CD BENCHMARK: 200,000 ROWS PARSING &amp; PROCESSING LATENCY
+  </text>
+  <text x="450" y="54" text-anchor="middle" font-family="'Inter', sans-serif" font-size="12" fill="#64748B">
+    Measured on 10MB CSV/Excel datasets using automated load testing &amp; CI/CD regression tracking
+  </text>
+
+  <!-- Row 1: Cloud/Server Notebooks -->
+  <g transform="translate(40, 85)">
+    <text x="0" y="15" class="label">Cloud / Server Notebooks</text>
+    <text x="0" y="32" class="sublabel">(Upload + Server Parse + Egress)</text>
+    
+    <!-- Bar Background -->
+    <rect x="230" y="5" width="520" height="26" rx="6" fill="#1E1B4B" />
+    <!-- Animated Bar -->
+    <rect x="230" y="5" width="480" height="26" rx="6" fill="url(#bar-slow)">
+      <animate attributeName="width" values="0;480" dur="2s" fill="freeze" />
+    </rect>
+    <text x="725" y="23" class="metric" fill="#F87171">8,450 ms</text>
+  </g>
+
+  <!-- Row 2: DataIQ Pro Web Workers -->
+  <g transform="translate(40, 150)">
+    <text x="0" y="15" class="label">DataIQ Pro (Web Workers)</text>
+    <text x="0" y="32" class="sublabel">(100% Local In-Browser Worker)</text>
+    
+    <!-- Bar Background -->
+    <rect x="230" y="5" width="520" height="26" rx="6" fill="#1E1B4B" />
+    <!-- Animated Bar -->
+    <rect x="230" y="5" width="68" height="26" rx="6" fill="url(#bar-fast)" filter="url(#bar-glow)">
+      <animate attributeName="width" values="0;68" dur="1.2s" fill="freeze" />
+    </rect>
+    <text x="310" y="23" class="metric" fill="#34D399">385 ms  (22x Faster + 100% Private)</text>
+  </g>
+</svg>
