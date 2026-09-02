@@ -76,6 +76,15 @@ import { authorizeAction, recordAudit } from "@/lib/audit.functions";
 import { getSessionId } from "@/lib/session";
 import { formatValue, NUMBER_FORMAT_OPTIONS } from "@/lib/number-format";
 import { downloadCSV } from "@/lib/csv";
+import {
+  applyPdfDocumentTags,
+  addPdfBookmark,
+  addInvisibleAltText,
+  appendAltTextAppendix,
+  describeFilterContext,
+  type VisualAltText,
+} from "@/lib/pdf-a11y";
+
 import { DrillThrough, type DrillSpec } from "@/components/dashboard/drill-through";
 import {
   builtinTemplates,
