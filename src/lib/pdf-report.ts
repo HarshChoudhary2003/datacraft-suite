@@ -8,6 +8,7 @@ import { correlationMatrix, topCorrelations } from "@/lib/stats";
 import type { CodeValidation } from "@/lib/codegen-validate";
 import type { ProcessingTelemetry } from "@/lib/processing-telemetry";
 import { formatMs } from "@/lib/processing-telemetry";
+import { applyPdfDocumentTags, addPdfBookmark } from "@/lib/pdf-a11y";
 
 export interface FullReportInput {
   dataset: Dataset;
@@ -28,6 +29,12 @@ export function buildFullReportPDF(input: FullReportInput): void {
   const pageH = doc.internal.pageSize.getHeight();
   const contentW = pageW - MARGIN * 2;
   let y = MARGIN;
+
+  applyPdfDocumentTags(doc, {
+    title: `DataIQ Pro — Full Analysis Report: ${ds.name}`,
+    subject: `Data quality, correlation, code validation and telemetry report for ${ds.name}. Role: ${input.role}.`,
+    keywords: ["data quality", "correlation", "telemetry", ds.name].join(", "),
+  });
 
   const ensure = (needed = LINE) => {
     if (y + needed > pageH - MARGIN) {
@@ -53,6 +60,8 @@ export function buildFullReportPDF(input: FullReportInput): void {
   };
   const heading = (s: string) => {
     y += 6;
+    // Outline bookmark so screen readers / PDF readers can jump between sections.
+    addPdfBookmark(doc, s, doc.getNumberOfPages());
     ensure(30);
     doc.setDrawColor(226, 232, 240);
     doc.setFillColor(99, 102, 241);
