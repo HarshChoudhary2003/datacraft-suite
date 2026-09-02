@@ -639,9 +639,31 @@ function DashboardPage() {
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
       const margin = 28;
+      const docTitle = `${dataset.name} — Report Canvas`;
+      const filterSentence = describeFilterContext(activeFilterLabels, {
+        filteredRows: filteredDataset?.rowCount ?? dataset.rowCount,
+        totalRows: dataset.rowCount,
+      });
+      // Text alternatives for every visual, in canvas order.
+      const altVisuals: VisualAltText[] = widgets.map((w) => {
+        const meta = seriesRef.current.get(w.id);
+        return {
+          title: meta?.title || w.customTitle || `${w.type} visual`,
+          type: w.type,
+          caption: meta?.caption,
+          legend: meta?.series?.map((p) => p.x).slice(0, 20),
+          series: meta?.series,
+        };
+      });
+      applyPdfDocumentTags(pdf, {
+        title: docTitle,
+        subject: `Accessible dashboard export of ${dataset.name}. ${filterSentence}`,
+        keywords: ["dashboard", dataset.name, ...widgets.map((w) => w.type)].join(", "),
+      });
+      addPdfBookmark(pdf, "Report canvas", 1);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(15);
-      pdf.text(`${dataset.name} — Report Canvas`, margin, 32);
+      pdf.text(docTitle, margin, 32);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
       pdf.setTextColor(110);
@@ -665,7 +687,18 @@ function DashboardPage() {
         canvas.width * ratio,
         canvas.height * ratio,
       );
+      // Invisible text layer behind the canvas image: screen readers and text
+      // extraction get the filter context and a summary of each visual.
+      addInvisibleAltText(
+        pdf,
+        `${docTitle}. ${filterSentence} This page is an image of the report canvas containing ${altVisuals.length} visual(s): ${altVisuals
+          .map((v, i) => `${i + 1}. ${v.title} (${v.type})`)
+          .join("; ")}. Full descriptions follow on the accessible text alternatives page.`,
+        { x: margin, y: top + 12, maxWidth: availW },
+      );
+      appendAltTextAppendix(pdf, altVisuals, filterSentence, { margin });
       pdf.save(`${dataset.name.replace(/\W+/g, "_")}_dashboard.pdf`);
+
       void recordAudit({
         data: {
           sessionId: getSessionId(),
