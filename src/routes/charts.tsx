@@ -35,6 +35,7 @@ import {
   FunnelChart,
   Funnel,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 import {
   LayoutDashboard,
   Wand2,
@@ -69,7 +70,15 @@ import {
   Layers,
   Sliders,
 } from "lucide-react";
-import { THEMES, tooltipStyle } from "@/lib/chart-theme";
+import {
+  THEMES,
+  tooltipStyle,
+  resolvePalette,
+  seriesColorAt,
+  dimmedColor,
+  gradientStops,
+  gradientId,
+} from "@/lib/chart-theme";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
 import { authorizeAction, recordAudit } from "@/lib/audit.functions";
@@ -1442,6 +1451,78 @@ class WidgetErrorBoundary extends React.Component<
 /* Widget                                                              */
 /* ------------------------------------------------------------------ */
 
+const truncateLabel = (value: string, maxChars: number) =>
+  value.length > maxChars ? `${value.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…` : value;
+
+const wrapLabel = (value: string, maxChars: number, maxLines = 2) => {
+  const words = value.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length <= maxChars) line = next;
+    else if (line) {
+      lines.push(line);
+      line = word;
+    } else {
+      lines.push(truncateLabel(word, maxChars));
+      line = "";
+    }
+    if (lines.length === maxLines) break;
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  if (lines.length === maxLines && value.length > lines.join(" ").length)
+    lines[maxLines - 1] = truncateLabel(lines[maxLines - 1], Math.max(1, maxChars - 1));
+  return lines.length ? lines : ["—"];
+};
+
+function WrappedAxisTick({ x, y, payload, maxChars = 14 }: { x?: number; y?: number; payload?: { value?: unknown }; maxChars?: number }) {
+  const label = String(payload?.value ?? "");
+  const lines = wrapLabel(label, maxChars);
+  return (
+    <g transform={`translate(${x ?? 0},${y ?? 0})`}>
+      <title>{label}</title>
+      <text textAnchor="middle" fill="var(--muted-foreground)" fontSize={10}>
+        {lines.map((line, index) => <tspan key={index} x="0" dy={index === 0 ? 0 : 12}>{line}</tspan>)}
+      </text>
+    </g>
+  );
+}
+
+type ChartTooltipPayload = NonNullable<TooltipProps<number, string>["payload"]>[number];
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  formatValue,
+  categoryName,
+}: TooltipProps<number, string> & { formatValue: (value: number) => string; categoryName: string }) {
+  if (!active || !payload?.length) return null;
+  const category = String(label ?? payload[0]?.payload?.x ?? "");
+  return (
+    <div className="min-w-[150px] max-w-[260px] space-y-2 rounded-xl border border-border/70 bg-popover/95 p-2.5 text-popover-foreground shadow-xl backdrop-blur-xl">
+      <div className="truncate border-b border-border/60 pb-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+        {categoryName}: <span className="text-foreground">{category}</span>
+      </div>
+      <div className="space-y-1">
+        {payload.map((entry: ChartTooltipPayload, index) => {
+          const value = typeof entry.value === "number" ? entry.value : Number(entry.value);
+          if (!Number.isFinite(value)) return null;
+          return (
+            <div key={`${String(entry.dataKey)}-${index}`} className="flex items-center justify-between gap-4 text-xs">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="size-2 shrink-0 rounded-full" style={{ background: entry.color || "var(--primary)" }} />
+                <span className="truncate">{String(entry.name || entry.dataKey || "Value")}</span>
+              </span>
+              <strong className="shrink-0 tabular-nums">{formatValue(value)}</strong>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const WidgetCard = ({
   widget,
   dataset,
@@ -1475,10 +1556,12 @@ const WidgetCard = ({
   focusMode?: boolean;
 }) => {
   const [editing, setEditing] = useState(false);
+  const [hoveredSeries, setHoveredSeries] = useState<string | null>(null);
   const numCols = dataset.profiles.filter((p) => p.type === "numeric");
   const xType = dataset.profiles.find((p) => p.name === widget.xAxis)?.type;
   const isDateX = xType === "datetime";
-  const gradId = `grad-${widget.id}`;
+  const palette = resolvePalette(widget.palette) ?? colors;
+  const gradId = gradientId(widget.id);
 
   const chartData = useMemo(() => {
     if (!dataset || !widget.xAxis || !widget.yAxis) return [];
