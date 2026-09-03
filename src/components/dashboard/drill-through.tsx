@@ -13,6 +13,8 @@ export interface DrillSpec {
   /** Dimension + value when drilling from a bar/slice/point (absent for KPIs). */
   column?: string;
   value?: string;
+  /** Additional dimension filters for a selected breakdown series. */
+  filters?: Array<{ column: string; value: string }>;
   /** Measure column, when the source visual had one. */
   measure?: string;
   /** Human-readable description of the source aggregation. */
@@ -41,9 +43,17 @@ export function DrillThrough({
   const trapRef = useFocusTrap<HTMLDivElement>(onClose);
 
   const rows = useMemo<Row[]>(() => {
-    if (!spec.column || spec.value === undefined) return dataset.rows;
-    return dataset.rows.filter((r) => String(r[spec.column as string] ?? "") === spec.value);
-  }, [dataset, spec.column, spec.value]);
+    const filters = [
+      ...(spec.column && spec.value !== undefined
+        ? [{ column: spec.column, value: spec.value }]
+        : []),
+      ...(spec.filters ?? []),
+    ];
+    if (filters.length === 0) return dataset.rows;
+    return dataset.rows.filter((r) =>
+      filters.every(({ column, value }) => String(r[column] ?? "") === value),
+    );
+  }, [dataset, spec.column, spec.value, spec.filters]);
 
   const numericCols = useMemo(
     () => dataset.profiles.filter((p) => p.type === "numeric").map((p) => p.name),

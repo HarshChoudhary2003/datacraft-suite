@@ -69,7 +69,15 @@ import {
   Layers,
   Sliders,
 } from "lucide-react";
-import { THEMES, tooltipStyle } from "@/lib/chart-theme";
+import {
+  THEMES,
+  tooltipStyle,
+  resolvePalette,
+  seriesColorAt,
+  dimmedColor,
+  gradientStops,
+  gradientId,
+} from "@/lib/chart-theme";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
 import { authorizeAction, recordAudit } from "@/lib/audit.functions";
