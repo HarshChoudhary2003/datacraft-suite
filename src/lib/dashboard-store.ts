@@ -72,6 +72,8 @@ export interface Widget {
 
   /** Secondary categorical column to group/breakdown data series. */
   breakdownBy?: string;
+  /** How breakdown series are laid out: side by side or stacked. */
+  stackMode?: "grouped" | "stacked" | "percent";
   /** Reference goal threshold line value. */
   referenceValue?: number;
   /** Custom label for threshold reference line. */
