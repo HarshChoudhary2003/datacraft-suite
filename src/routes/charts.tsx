@@ -1981,11 +1981,17 @@ const WidgetCard = ({
     allowDataOverflow: widget.yMin !== undefined || widget.yMax !== undefined,
   };
 
-  const drillInto = (value?: string) =>
+  const drillInto = (value?: string, seriesKey?: string) =>
     onDrill({
       title,
       column: value !== undefined ? widget.xAxis : undefined,
       value,
+      // A breakdown series click drills into that series too, without touching
+      // the page-level cross-filter.
+      filters:
+        breakdownCol && seriesKey && seriesKey !== "Other"
+          ? [{ column: breakdownCol, value: seriesKey }]
+          : undefined,
       measure: widget.yAxis,
       caption,
     });
@@ -1997,13 +2003,18 @@ const WidgetCard = ({
     entry: unknown,
     _index?: number,
     ev?: { altKey?: boolean; metaKey?: boolean },
+    seriesKey?: string,
   ) => {
     const e = entry as { x?: unknown; payload?: { x?: unknown } } | null;
     const raw = e?.payload?.x ?? (typeof e?.x === "string" ? e.x : undefined);
     if (raw === undefined || raw === null || !widget.xAxis) return;
-    if (ev?.altKey || ev?.metaKey) drillInto(String(raw));
+    if (ev?.altKey || ev?.metaKey) drillInto(String(raw), seriesKey);
     else onCrossFilter(widget.xAxis, String(raw));
   };
+  const seriesClick =
+    (key: string) =>
+    (entry: unknown, index?: number, ev?: { altKey?: boolean; metaKey?: boolean }) =>
+      barClick(entry, index, ev, key);
 
   const selectedX = crossFilter && crossFilter.col === widget.xAxis ? crossFilter.val : null;
   const colorFor = (i: number, x: string, base: string) =>
