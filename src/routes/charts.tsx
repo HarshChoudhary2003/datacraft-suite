@@ -1672,6 +1672,106 @@ const WidgetCard = ({
     xType,
   ]);
 
+  /* ---------- Breakdown pivot: multi-series (stacked / grouped) ---------- */
+  const breakdownCol =
+    widget.breakdownBy && dataset.columns.includes(widget.breakdownBy) ? widget.breakdownBy : null;
+
+  const { seriesKeys, plotData } = useMemo<{
+    seriesKeys: string[];
+    plotData: Record<string, unknown>[];
+  }>(() => {
+    const supports = ["bar", "h-bar", "line", "area", "composed"].includes(widget.type);
+    if (!breakdownCol || !supports || chartData.length === 0)
+      return { seriesKeys: [], plotData: chartData as Record<string, unknown>[] };
+
+    const group = widget.timeGroup ?? "none";
+    const agg = widget.aggregation ?? "avg";
+    const known = new Set(chartData.map((d) => (d as { x: string }).x));
+    const cells = new Map<string, { sum: number; count: number; values: number[] }>();
+    const totals = new Map<string, number>();
+
+    for (const r of dataset.rows) {
+      const rawX = String(r[widget.xAxis] ?? "Unknown");
+      const xVal = (group === "none" ? rawX : timeBucket(rawX, group)).substring(0, 30);
+      if (!known.has(xVal)) continue;
+      const yVal = Number(r[widget.yAxis]);
+      if (isNaN(yVal)) continue;
+      const key = String(r[breakdownCol] ?? "Unknown").substring(0, 24);
+      const cellKey = `${xVal}\u0000${key}`;
+      const entry = cells.get(cellKey) ?? { sum: 0, count: 0, values: [] };
+      entry.sum += yVal;
+      entry.count += 1;
+      entry.values.push(yVal);
+      cells.set(cellKey, entry);
+      totals.set(key, (totals.get(key) ?? 0) + Math.abs(yVal));
+    }
+
+    const reduce = ({ sum, count, values }: { sum: number; count: number; values: number[] }) => {
+      if (agg === "sum") return Number(sum.toFixed(2));
+      if (agg === "count") return count;
+      if (agg === "min") return Number(Math.min(...values).toFixed(2));
+      if (agg === "max") return Number(Math.max(...values).toFixed(2));
+      if (agg === "median") {
+        const s = [...values].sort((a, b) => a - b);
+        const mid = Math.floor(s.length / 2);
+        return Number((s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2).toFixed(2));
+      }
+      if (agg === "std") {
+        const mean = sum / count;
+        return Number(
+          Math.sqrt(values.reduce((a, v) => a + (v - mean) ** 2, 0) / count).toFixed(2),
+        );
+      }
+      return Number((sum / count).toFixed(2));
+    };
+
+    const ranked = Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([k]) => k);
+    const keys = ranked.slice(0, 8);
+    const rest = new Set(ranked.slice(8));
+    if (rest.size > 0) keys.push("Other");
+
+    const data = chartData.map((d) => {
+      const row: Record<string, unknown> = { ...(d as Record<string, unknown>) };
+      const x = (d as { x: string }).x;
+      let other = 0;
+      for (const [cellKey, entry] of cells) {
+        const [cx, key] = cellKey.split("\u0000");
+        if (cx !== x) continue;
+        if (rest.has(key)) other += reduce(entry);
+        else row[key] = reduce(entry);
+      }
+      if (rest.size > 0) row["Other"] = Number(other.toFixed(2));
+      return row;
+    });
+
+    if (widget.stackMode === "percent") {
+      for (const row of data) {
+        const total = keys.reduce((a, k) => a + (Number(row[k]) || 0), 0);
+        if (total > 0)
+          for (const k of keys) row[k] = Number((((Number(row[k]) || 0) / total) * 100).toFixed(2));
+      }
+    }
+
+    return { seriesKeys: keys, plotData: data };
+  }, [
+    chartData,
+    dataset,
+    breakdownCol,
+    widget.type,
+    widget.xAxis,
+    widget.yAxis,
+    widget.aggregation,
+    widget.timeGroup,
+    widget.stackMode,
+  ]);
+
+  const stackId = widget.stackMode === "grouped" ? undefined : "stack";
+  const seriesOpacity = (key: string) =>
+    hoveredSeries && hoveredSeries !== key ? 0.25 : 1;
+
+
   /* --------------------- KPI ---------------------- */
 
   const kpi = useMemo(() => {
