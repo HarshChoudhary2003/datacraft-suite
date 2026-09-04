@@ -2034,7 +2034,7 @@ const WidgetCard = ({
 
     const chartAvg =
       chartData.reduce((acc: number, cur: { y: number }) => acc + cur.y, 0) / chartData.length;
-    const props = { data: chartData, margin: { top: 12, right: 12, bottom: 4, left: -12 } };
+    const props = { data: plotData, margin: { top: 12, right: 12, bottom: 4, left: -12 } };
     const labelProps: Record<string, unknown> = {
       dataKey: "y",
       position: "top",
@@ -2044,7 +2044,30 @@ const WidgetCard = ({
       formatter: (v: number) => fmtVal(v),
     };
     const labelPropsRight: Record<string, unknown> = { ...labelProps, position: "right" };
-    const accent = colors[(widget.themeColor ?? 0) % colors.length];
+    const accent = seriesColorAt(palette, widget.themeColor ?? 0);
+    const multi = seriesKeys.length > 0;
+    const longLabels = chartData.some((d: { x: string }) => String(d.x).length > 12);
+    const categoryTick = longLabels
+      ? (tickProps: object) => <WrappedAxisTick {...tickProps} maxChars={14} />
+      : axisTick;
+    // One tooltip design for every visual: formatted values + category context + legend colours.
+    const chartTip = (
+      <Tooltip
+        cursor={cursorFill}
+        content={(tp) => (
+          <ChartTooltip
+            {...(tp as TooltipProps<number, string>)}
+            formatValue={fmtVal}
+            categoryName={widget.xAxis || "Category"}
+          />
+        )}
+      />
+    );
+    const legendHover = {
+      onMouseEnter: (item: { value?: unknown; dataKey?: unknown }) =>
+        setHoveredSeries(String(item?.dataKey ?? item?.value ?? "")),
+      onMouseLeave: () => setHoveredSeries(null),
+    };
 
     if (widget.type === "scatter") {
       return (
@@ -2122,7 +2145,7 @@ const WidgetCard = ({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             layout="vertical"
-            data={chartData}
+            data={plotData}
             margin={{ top: 6, right: 28, bottom: 4, left: 6 }}
           >
             <CartesianGrid {...gridProps} horizontal={false} />
@@ -2131,17 +2154,14 @@ const WidgetCard = ({
               type="category"
               dataKey="x"
               tick={axisTick}
-              width={96}
+              width={110}
               tickMargin={6}
               axisLine={false}
               tickLine={false}
+              tickFormatter={(v: unknown) => truncateLabel(String(v), 16)}
             />
-            <Tooltip
-              cursor={cursorFill}
-              contentStyle={tooltipStyle}
-              formatter={(v: number) => fmtVal(v)}
-            />
-            {showLegend && <Legend {...legendProps} />}
+            {chartTip}
+            {(showLegend || multi) && <Legend {...legendProps} {...legendHover} />}
             {widget.showAverageLine && (
               <ReferenceLine
                 x={chartAvg}
@@ -2150,19 +2170,36 @@ const WidgetCard = ({
                 opacity={0.6}
               />
             )}
-            <Bar
-              name={widget.yAxis}
-              dataKey="y"
-              radius={[0, 6, 6, 0]}
-              onClick={barClick}
-              className="cursor-pointer"
-              maxBarSize={26}
-            >
-              {chartData.map((d: { x: string | number }, i: number) => (
-                <Cell key={i} fill={colorFor(i, String(d.x), accent)} />
-              ))}
-              {widget.showDataLabels && <LabelList {...labelPropsRight} />}
-            </Bar>
+            {multi ? (
+              seriesKeys.map((key, si) => (
+                <Bar
+                  key={key}
+                  name={key}
+                  dataKey={key}
+                  stackId={stackId}
+                  fill={seriesColorAt(palette, si, widget.themeColor ?? 0)}
+                  fillOpacity={seriesOpacity(key)}
+                  radius={stackId ? 0 : [0, 4, 4, 0]}
+                  onClick={seriesClick(key)}
+                  className="cursor-pointer"
+                  maxBarSize={26}
+                />
+              ))
+            ) : (
+              <Bar
+                name={widget.yAxis}
+                dataKey="y"
+                radius={[0, 6, 6, 0]}
+                onClick={barClick}
+                className="cursor-pointer"
+                maxBarSize={26}
+              >
+                {chartData.map((d: { x: string | number }, i: number) => (
+                  <Cell key={i} fill={colorFor(i, String(d.x), accent)} />
+                ))}
+                {widget.showDataLabels && <LabelList {...labelPropsRight} />}
+              </Bar>
+            )}
           </BarChart>
         </ResponsiveContainer>
       );
@@ -2175,15 +2212,17 @@ const WidgetCard = ({
             <CartesianGrid {...gridProps} vertical={false} />
             <XAxis
               dataKey="x"
-              tick={axisTick}
+              tick={categoryTick}
               tickMargin={6}
               axisLine={false}
               tickLine={false}
               minTickGap={16}
+              height={longLabels ? 44 : 24}
+              interval="preserveStartEnd"
             />
             <YAxis {...valueAxisProps} width={48} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
-            {showLegend && <Legend {...legendProps} />}
+            {chartTip}
+            {(showLegend || multi) && <Legend {...legendProps} {...legendHover} />}
             {widget.showAverageLine && (
               <ReferenceLine
                 y={chartAvg}
@@ -2192,17 +2231,35 @@ const WidgetCard = ({
                 opacity={0.6}
               />
             )}
-            <Line
-              name={widget.yAxis}
-              type="monotone"
-              dataKey="y"
-              stroke={accent}
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 5, strokeWidth: 0, fill: accent }}
-            >
-              {widget.showDataLabels && <LabelList {...labelProps} />}
-            </Line>
+            {multi ? (
+              seriesKeys.map((key, si) => {
+                const c = seriesColorAt(palette, si, widget.themeColor ?? 0);
+                return (
+                  <Line
+                    key={key}
+                    name={key}
+                    type="monotone"
+                    dataKey={key}
+                    stroke={hoveredSeries && hoveredSeries !== key ? dimmedColor(c) : c}
+                    strokeWidth={hoveredSeries === key ? 3.5 : 2.25}
+                    dot={false}
+                    activeDot={{ r: 5, strokeWidth: 0, fill: c }}
+                  />
+                );
+              })
+            ) : (
+              <Line
+                name={widget.yAxis}
+                type="monotone"
+                dataKey="y"
+                stroke={accent}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 0, fill: accent }}
+              >
+                {widget.showDataLabels && <LabelList {...labelProps} />}
+              </Line>
+            )}
           </LineChart>
         </ResponsiveContainer>
       );
@@ -2234,10 +2291,18 @@ const WidgetCard = ({
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart {...props}>
             <CartesianGrid {...gridProps} vertical={false} />
-            <XAxis dataKey="x" tick={axisTick} tickMargin={6} axisLine={false} tickLine={false} />
+            <XAxis
+              dataKey="x"
+              tick={categoryTick}
+              tickMargin={6}
+              axisLine={false}
+              tickLine={false}
+              height={longLabels ? 44 : 24}
+              interval="preserveStartEnd"
+            />
             <YAxis {...valueAxisProps} width={48} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
-            {showLegend && <Legend {...legendProps} />}
+            {chartTip}
+            {(showLegend || multi) && <Legend {...legendProps} {...legendHover} />}
             {widget.showAverageLine && (
               <ReferenceLine
                 y={chartAvg}
@@ -2254,17 +2319,34 @@ const WidgetCard = ({
                 strokeDasharray="3 3"
               />
             )}
-            <Bar
-              name={widget.yAxis}
-              dataKey="y"
-              fill={accent}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={36}
-              onClick={barClick}
-              className="cursor-pointer"
-            >
-              {widget.showDataLabels && <LabelList {...labelProps} />}
-            </Bar>
+            {multi ? (
+              seriesKeys.map((key, si) => (
+                <Bar
+                  key={key}
+                  name={key}
+                  dataKey={key}
+                  stackId={stackId}
+                  fill={seriesColorAt(palette, si, widget.themeColor ?? 0)}
+                  fillOpacity={seriesOpacity(key)}
+                  radius={stackId ? 0 : [4, 4, 0, 0]}
+                  maxBarSize={36}
+                  onClick={seriesClick(key)}
+                  className="cursor-pointer"
+                />
+              ))
+            ) : (
+              <Bar
+                name={widget.yAxis}
+                dataKey="y"
+                fill={accent}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={36}
+                onClick={barClick}
+                className="cursor-pointer"
+              >
+                {widget.showDataLabels && <LabelList {...labelProps} />}
+              </Bar>
+            )}
             <Line
               name={`${widget.yAxis} Trend`}
               type="monotone"
