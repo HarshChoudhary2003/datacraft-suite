@@ -2046,7 +2046,7 @@ const WidgetCard = ({
     const labelPropsRight: Record<string, unknown> = { ...labelProps, position: "right" };
     const accent = seriesColorAt(palette, widget.themeColor ?? 0);
     const multi = seriesKeys.length > 0;
-    const longLabels = chartData.some((d: { x: string }) => String(d.x).length > 12);
+    const longLabels = (chartData as { x: unknown }[]).some((d) => String(d.x).length > 12);
     const categoryTick = longLabels
       ? (tickProps: object) => <WrappedAxisTick {...tickProps} maxChars={14} />
       : axisTick;
