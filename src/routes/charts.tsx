@@ -2331,7 +2331,7 @@ const WidgetCard = ({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart {...props}>
             <CartesianGrid {...gridProps} vertical={false} />
-            <XAxis dataKey="x" tick={axisTick} tickMargin={6} axisLine={false} tickLine={false} />
+            <XAxis dataKey="x" tick={categoryTick} tickMargin={6} axisLine={false} tickLine={false} interval="preserveStartEnd" />
             <YAxis {...valueAxisProps} width={48} />
             {chartTip}
             {showLegend && <Legend {...legendProps} />}
@@ -2374,7 +2374,7 @@ const WidgetCard = ({
             <CartesianGrid {...gridProps} vertical={false} />
             <XAxis
               dataKey="x"
-              tick={axisTick}
+              tick={categoryTick}
               tickMargin={6}
               axisLine={false}
               tickLine={false}
@@ -2423,13 +2423,13 @@ const WidgetCard = ({
           <CartesianGrid {...gridProps} vertical={false} />
           <XAxis
             dataKey="x"
-            tick={axisTick}
+            tick={categoryTick}
             tickMargin={6}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
-            angle={chartData.length > 8 ? -30 : 0}
-            textAnchor={chartData.length > 8 ? "end" : "middle"}
+            angle={!longLabels && chartData.length > 8 ? -30 : 0}
+            textAnchor={!longLabels && chartData.length > 8 ? "end" : "middle"}
             height={chartData.length > 8 ? 46 : 24}
           />
           <YAxis {...valueAxisProps} width={48} />
