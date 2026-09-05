@@ -145,24 +145,41 @@ export function CorrelationPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-4 lg:gap-6">
+      <div className="grid lg:grid-cols-5 gap-4 lg:gap-6 items-start">
         <div className="neo p-4 sm:p-5 lg:col-span-3 overflow-hidden">
-          <div className="font-semibold mb-3">Correlation matrix</div>
+          <div className="flex items-baseline justify-between gap-3 mb-3">
+            <div className="font-semibold">Correlation matrix</div>
+            <div className="text-[11px] text-muted-foreground">
+              {corr.columns.length} numeric columns
+            </div>
+          </div>
           <div className="overflow-x-auto -mx-1 px-1">
-            <table className="text-[10px] sm:text-xs border-separate border-spacing-1 mx-auto">
+            <table
+              className="text-[10px] sm:text-xs border-separate border-spacing-1 mx-auto"
+              aria-label="Pearson correlation matrix"
+            >
+              <caption className="sr-only">
+                Pearson correlation coefficients for every pair of numeric columns.
+              </caption>
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-[var(--card)]"></th>
-                  {corr.columns.map((c) => (
+                  <th className="sticky left-0 z-10 bg-[var(--card)]" scope="col">
+                    <span className="sr-only">Column</span>
+                  </th>
+                  {corr.columns.map((c, j) => (
                     <th
                       key={c}
-                      className="px-1 py-1 font-medium text-muted-foreground h-24 align-bottom"
+                      scope="col"
+                      title={c}
+                      className={`px-0 py-1 font-medium h-28 align-bottom transition-colors ${
+                        hover?.j === j ? "text-primary" : "text-muted-foreground"
+                      }`}
                     >
                       <div
-                        className="-rotate-45 origin-bottom-left w-4 whitespace-nowrap text-[10px]"
-                        title={c}
+                        className="mx-auto whitespace-nowrap text-[10px] leading-none"
+                        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                       >
-                        {truncate(c, 14)}
+                        {truncate(c, 18)}
                       </div>
                     </th>
                   ))}
@@ -172,25 +189,39 @@ export function CorrelationPage() {
                 {corr.matrix.map((row, i) => (
                   <tr key={i}>
                     <th
-                      className="sticky left-0 z-10 bg-[var(--card)] text-right pr-2 font-medium text-muted-foreground whitespace-nowrap text-[10px] sm:text-xs max-w-[8rem] truncate"
+                      scope="row"
+                      className={`sticky left-0 z-10 bg-[var(--card)] text-right pr-2 font-medium whitespace-nowrap text-[10px] sm:text-xs transition-colors ${
+                        hover?.i === i ? "text-primary" : "text-muted-foreground"
+                      }`}
                       title={corr.columns[i]}
                     >
-                      {truncate(corr.columns[i], 16)}
+                      {truncate(corr.columns[i], 18)}
                     </th>
                     {row.map((v, j) => {
-                      const dim = i !== j && Math.abs(v) < threshold;
+                      const diagonal = i === j;
+                      const dim = !diagonal && Math.abs(v) < threshold;
+                      const crossed = hover && (hover.i === i || hover.j === j);
                       return (
                         <td
                           key={j}
-                          className="size-8 sm:size-9 md:size-10 text-center font-mono rounded-md transition-opacity"
+                          onMouseEnter={() => setHover({ i, j })}
+                          onMouseLeave={() => setHover(null)}
+                          className="size-8 sm:size-9 md:size-10 text-center font-mono rounded-md transition-all"
                           style={{
-                            background: correlationColor(v, isDark),
-                            color: Math.abs(v) > 0.6 ? "white" : "var(--foreground)",
-                            opacity: dim ? 0.15 : 1,
+                            background: diagonal
+                              ? "color-mix(in srgb, var(--muted-foreground) 18%, transparent)"
+                              : correlationColor(v, isDark),
+                            color: diagonal
+                              ? "var(--muted-foreground)"
+                              : Math.abs(v) > 0.6
+                                ? "white"
+                                : "var(--foreground)",
+                            opacity: dim ? 0.18 : hover && !crossed ? 0.55 : 1,
+                            outline: hover?.i === i && hover?.j === j ? "2px solid var(--primary)" : undefined,
                           }}
-                          title={`${corr.columns[i]} vs ${corr.columns[j]}: ${v.toFixed(3)}`}
+                          title={`${corr.columns[i]} vs ${corr.columns[j]}: r = ${v.toFixed(3)} (${strengthLabel(v)})`}
                         >
-                          {v.toFixed(2)}
+                          {diagonal ? "—" : v.toFixed(2)}
                         </td>
                       );
                     })}
@@ -199,45 +230,84 @@ export function CorrelationPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
-            <span className="shrink-0">−1</span>
-            <div
-              className="flex-1 h-2 rounded-full"
-              style={{
-                background: `linear-gradient(90deg, ${correlationColor(-1, isDark)}, ${correlationColor(0, isDark)}, ${correlationColor(1, isDark)})`,
-              }}
-            />
-            <span className="shrink-0">+1</span>
+
+          {/* Colour scale with consistent ticks + strength annotations */}
+          <div className="mt-5 space-y-1.5">
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span className="shrink-0 font-mono">−1</span>
+              <div
+                className="flex-1 h-2.5 rounded-full border border-border/60"
+                style={{
+                  background: `linear-gradient(90deg, ${correlationColor(-1, isDark)}, ${correlationColor(-0.5, isDark)}, ${correlationColor(0, isDark)}, ${correlationColor(0.5, isDark)}, ${correlationColor(1, isDark)})`,
+                }}
+              />
+              <span className="shrink-0 font-mono">+1</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground px-7">
+              <span>strong −</span>
+              <span>moderate −</span>
+              <span>none</span>
+              <span>moderate +</span>
+              <span>strong +</span>
+            </div>
+            <div className="text-[11px] text-muted-foreground pt-1">
+              Hover a cell to highlight its row and column. The diagonal is always r = 1 and is
+              shown greyed out.
+            </div>
           </div>
         </div>
 
         <div className="neo p-4 sm:p-5 lg:col-span-2">
-          <div className="font-semibold mb-3">Top correlated pairs</div>
-          <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+          <div className="font-semibold mb-1">Top correlated pairs</div>
+          <div className="text-[11px] text-muted-foreground mb-3">
+            Select a pair to inspect its scatter plot.
+          </div>
+          <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
             {top.length === 0 && (
               <div className="text-sm text-muted-foreground p-3">
                 No pairs meet the |r| ≥ {threshold.toFixed(2)} threshold.
               </div>
             )}
-            {top.map((t, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedPairIndex(i)}
-                className={`w-full text-left neo-sm p-3 flex items-center justify-between gap-2 cursor-pointer transition-colors ${i === selectedPairIndex ? "ring-2 ring-primary bg-primary/5" : "hover:bg-muted/30"}`}
-              >
-                <div className="text-xs sm:text-sm truncate min-w-0">
-                  <span className="font-medium">{t.a}</span>{" "}
-                  <span className="text-muted-foreground">↔</span>{" "}
-                  <span className="font-medium">{t.b}</span>
-                </div>
-                <div
-                  className="font-mono font-bold text-sm shrink-0"
-                  style={{ color: correlationColor(t.r >= 0 ? 0.9 : -0.9, isDark) }}
+            {top.map((t, i) => {
+              const selected = i === selectedPairIndex;
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelectedPairIndex(i)}
+                  aria-pressed={selected}
+                  className={`w-full text-left neo-sm p-3 space-y-2 cursor-pointer transition-colors ${selected ? "ring-2 ring-primary bg-primary/5" : "hover:bg-muted/30"}`}
                 >
-                  {t.r.toFixed(3)}
-                </div>
-              </button>
-            ))}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs sm:text-sm truncate min-w-0">
+                      <span className="font-medium">{t.a}</span>{" "}
+                      <span className="text-muted-foreground">↔</span>{" "}
+                      <span className="font-medium">{t.b}</span>
+                    </div>
+                    <div
+                      className="font-mono font-bold text-sm shrink-0 tabular-nums"
+                      style={{ color: correlationColor(t.r >= 0 ? 0.9 : -0.9, isDark) }}
+                    >
+                      {t.r >= 0 ? "+" : "−"}
+                      {Math.abs(t.r).toFixed(3)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 flex-1 rounded-full bg-muted/50 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min(100, Math.abs(t.r) * 100)}%`,
+                          background: correlationColor(t.r, isDark),
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+                      {strengthLabel(t.r)}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -250,17 +320,19 @@ export function CorrelationPage() {
               <span className="text-primary">{topPair.b}</span>
             </h3>
             <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
-              <div className="flex items-center gap-1.5 font-mono text-muted-foreground">
-                r = {topPair.r.toFixed(3)}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-0.5 bg-destructive" /> Line of best fit
-              </div>
+              <span className="font-mono text-muted-foreground">r = {topPair.r.toFixed(3)}</span>
+              <span className="font-mono text-muted-foreground">
+                r² = {(topPair.r * topPair.r).toFixed(3)}
+              </span>
+              <span className="font-mono text-muted-foreground">n = {scatterData.length}</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-0.5 bg-destructive" /> Line of best fit
+              </span>
             </div>
           </div>
           <div className="h-64 sm:h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+              <ComposedChart margin={{ top: 8, right: 16, left: 0, bottom: 16 }}>
                 <CartesianGrid {...gridStyle} />
                 <XAxis
                   dataKey="x"
@@ -268,10 +340,42 @@ export function CorrelationPage() {
                   {...axisStyle}
                   type="number"
                   domain={["dataMin", "dataMax"]}
+                  tickFormatter={(v: number) => fmtNum(v)}
+                  label={{
+                    value: truncate(topPair.a, 28),
+                    position: "insideBottom",
+                    offset: -10,
+                    fontSize: 11,
+                    fill: "var(--muted-foreground)",
+                  }}
                 />
-                <YAxis dataKey="y" name={topPair.b} {...axisStyle} />
-                <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={tooltipStyle} />
+                <YAxis
+                  dataKey="y"
+                  name={topPair.b}
+                  {...axisStyle}
+                  width={56}
+                  tickFormatter={(v: number) => fmtNum(v)}
+                  label={{
+                    value: truncate(topPair.b, 22),
+                    angle: -90,
+                    position: "insideLeft",
+                    fontSize: 11,
+                    fill: "var(--muted-foreground)",
+                  }}
+                />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  content={(tp) => (
+                    <ChartTooltip
+                      {...(tp as Parameters<typeof ChartTooltip>[0])}
+                      formatValue={fmtNum}
+                      categoryName={topPair.a}
+                      showTotal={false}
+                    />
+                  )}
+                />
                 <Scatter
+                  name={topPair.b}
                   data={scatterData}
                   fill="var(--chart-1)"
                   fillOpacity={0.55}
@@ -279,6 +383,7 @@ export function CorrelationPage() {
                 />
                 {trendlineData.length > 0 && (
                   <Line
+                    name="Line of best fit"
                     data={trendlineData}
                     dataKey="trendY"
                     type="linear"
@@ -292,8 +397,18 @@ export function CorrelationPage() {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+          <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+            <span className="font-semibold text-foreground">Reading this chart:</span>{" "}
+            {topPair.a} and {topPair.b} show a{" "}
+            <span className="text-foreground font-medium">{strengthLabel(topPair.r)}</span>{" "}
+            {topPair.r >= 0 ? "positive" : "negative"} linear relationship — about{" "}
+            {(topPair.r * topPair.r * 100).toFixed(1)}% of the variation in {topPair.b} is explained
+            by {topPair.a} across {scatterData.length} plotted points. Correlation does not imply
+            causation.
+          </p>
         </div>
       )}
+
     </div>
   );
 }
