@@ -2026,7 +2026,7 @@ const WidgetCard = ({
               tickFormatter={fmtVal}
             />
             <YAxis type="number" dataKey="y" name={widget.yAxis} {...valueAxisProps} width={48} />
-            <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={tooltipStyle} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             {widget.showAverageLine && (
               <ReferenceLine
@@ -2048,7 +2048,7 @@ const WidgetCard = ({
       return (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             <Pie
               data={chartData}
@@ -2220,7 +2220,7 @@ const WidgetCard = ({
               fill={accent}
               fillOpacity={0.4}
             />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
           </RadarChart>
         </ResponsiveContainer>
@@ -2308,7 +2308,7 @@ const WidgetCard = ({
       return (
         <ResponsiveContainer width="100%" height="100%">
           <FunnelChart margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             <Funnel dataKey="y" nameKey="x" data={chartData} isAnimationActive>
               <LabelList
                 position="right"
@@ -2333,7 +2333,7 @@ const WidgetCard = ({
             <CartesianGrid {...gridProps} vertical={false} />
             <XAxis dataKey="x" tick={axisTick} tickMargin={6} axisLine={false} tickLine={false} />
             <YAxis {...valueAxisProps} width={48} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             <Bar
               name="Median (Q2)"
@@ -2381,7 +2381,7 @@ const WidgetCard = ({
               minTickGap={16}
             />
             <YAxis {...valueAxisProps} width={48} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             {widget.showAverageLine && (
               <ReferenceLine
