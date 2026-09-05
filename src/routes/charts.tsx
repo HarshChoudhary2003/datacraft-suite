@@ -37,6 +37,12 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import {
+  ChartTooltip,
+  ChartLegend,
+  WrappedAxisTick,
+  truncateLabel,
+} from "@/components/dashboard/chart-parts";
+import {
   LayoutDashboard,
   Wand2,
   Plus,
