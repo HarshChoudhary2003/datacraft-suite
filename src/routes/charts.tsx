@@ -1884,23 +1884,26 @@ const WidgetCard = ({
       ? "bottom"
       : "none");
   const showLegend = legendPos !== "none";
+  // One legend renderer for every chart type: same swatches, truncation and hover dimming.
+  const legendContent = (layout: "horizontal" | "vertical") => (
+    <ChartLegend layout={layout} activeKey={hoveredSeries} onHoverSeries={setHoveredSeries} />
+  );
   const legendProps =
     legendPos === "right"
       ? {
           align: "right" as const,
           verticalAlign: "middle" as const,
           layout: "vertical" as const,
-          iconType: "circle" as const,
-          iconSize: 8,
           wrapperStyle: { fontSize: 11, paddingLeft: 8 },
+          content: legendContent("vertical"),
         }
       : {
           verticalAlign: legendPos === "top" ? ("top" as const) : ("bottom" as const),
-          height: 28,
-          iconType: "circle" as const,
-          iconSize: 8,
+          height: 30,
           wrapperStyle: { fontSize: 11 },
+          content: legendContent("horizontal"),
         };
+
 
   // Value-axis scaling + manual bounds (blank = auto).
   const yAxisScale = widget.yScale === "log" ? ("log" as const) : ("linear" as const);
