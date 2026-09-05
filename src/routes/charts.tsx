@@ -37,6 +37,12 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import {
+  ChartTooltip,
+  ChartLegend,
+  WrappedAxisTick,
+  truncateLabel,
+} from "@/components/dashboard/chart-parts";
+import {
   LayoutDashboard,
   Wand2,
   Plus,
@@ -1451,77 +1457,9 @@ class WidgetErrorBoundary extends React.Component<
 /* Widget                                                              */
 /* ------------------------------------------------------------------ */
 
-const truncateLabel = (value: string, maxChars: number) =>
-  value.length > maxChars ? `${value.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…` : value;
+/* Label wrapping, the shared tooltip and the unified legend live in
+   components/dashboard/chart-parts so analysis/export surfaces reuse them. */
 
-const wrapLabel = (value: string, maxChars: number, maxLines = 2) => {
-  const words = value.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (next.length <= maxChars) line = next;
-    else if (line) {
-      lines.push(line);
-      line = word;
-    } else {
-      lines.push(truncateLabel(word, maxChars));
-      line = "";
-    }
-    if (lines.length === maxLines) break;
-  }
-  if (line && lines.length < maxLines) lines.push(line);
-  if (lines.length === maxLines && value.length > lines.join(" ").length)
-    lines[maxLines - 1] = truncateLabel(lines[maxLines - 1], Math.max(1, maxChars - 1));
-  return lines.length ? lines : ["—"];
-};
-
-function WrappedAxisTick({ x, y, payload, maxChars = 14 }: { x?: number; y?: number; payload?: { value?: unknown }; maxChars?: number }) {
-  const label = String(payload?.value ?? "");
-  const lines = wrapLabel(label, maxChars);
-  return (
-    <g transform={`translate(${x ?? 0},${y ?? 0})`}>
-      <title>{label}</title>
-      <text textAnchor="middle" fill="var(--muted-foreground)" fontSize={10}>
-        {lines.map((line, index) => <tspan key={index} x="0" dy={index === 0 ? 0 : 12}>{line}</tspan>)}
-      </text>
-    </g>
-  );
-}
-
-type ChartTooltipPayload = NonNullable<TooltipProps<number, string>["payload"]>[number];
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  formatValue,
-  categoryName,
-}: TooltipProps<number, string> & { formatValue: (value: number) => string; categoryName: string }) {
-  if (!active || !payload?.length) return null;
-  const category = String(label ?? payload[0]?.payload?.x ?? "");
-  return (
-    <div className="min-w-[150px] max-w-[260px] space-y-2 rounded-xl border border-border/70 bg-popover/95 p-2.5 text-popover-foreground shadow-xl backdrop-blur-xl">
-      <div className="truncate border-b border-border/60 pb-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-        {categoryName}: <span className="text-foreground">{category}</span>
-      </div>
-      <div className="space-y-1">
-        {payload.map((entry: ChartTooltipPayload, index) => {
-          const value = typeof entry.value === "number" ? entry.value : Number(entry.value);
-          if (!Number.isFinite(value)) return null;
-          return (
-            <div key={`${String(entry.dataKey)}-${index}`} className="flex items-center justify-between gap-4 text-xs">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span className="size-2 shrink-0 rounded-full" style={{ background: entry.color || "var(--primary)" }} />
-                <span className="truncate">{String(entry.name || entry.dataKey || "Value")}</span>
-              </span>
-              <strong className="shrink-0 tabular-nums">{formatValue(value)}</strong>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 const WidgetCard = ({
   widget,
@@ -1946,23 +1884,26 @@ const WidgetCard = ({
       ? "bottom"
       : "none");
   const showLegend = legendPos !== "none";
+  // One legend renderer for every chart type: same swatches, truncation and hover dimming.
+  const legendContent = (layout: "horizontal" | "vertical") => (
+    <ChartLegend layout={layout} activeKey={hoveredSeries} onHoverSeries={setHoveredSeries} />
+  );
   const legendProps =
     legendPos === "right"
       ? {
           align: "right" as const,
           verticalAlign: "middle" as const,
           layout: "vertical" as const,
-          iconType: "circle" as const,
-          iconSize: 8,
           wrapperStyle: { fontSize: 11, paddingLeft: 8 },
+          content: legendContent("vertical"),
         }
       : {
           verticalAlign: legendPos === "top" ? ("top" as const) : ("bottom" as const),
-          height: 28,
-          iconType: "circle" as const,
-          iconSize: 8,
+          height: 30,
           wrapperStyle: { fontSize: 11 },
+          content: legendContent("horizontal"),
         };
+
 
   // Value-axis scaling + manual bounds (blank = auto).
   const yAxisScale = widget.yScale === "log" ? ("log" as const) : ("linear" as const);
@@ -2085,7 +2026,7 @@ const WidgetCard = ({
               tickFormatter={fmtVal}
             />
             <YAxis type="number" dataKey="y" name={widget.yAxis} {...valueAxisProps} width={48} />
-            <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={tooltipStyle} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             {widget.showAverageLine && (
               <ReferenceLine
@@ -2107,7 +2048,7 @@ const WidgetCard = ({
       return (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             <Pie
               data={chartData}
@@ -2279,7 +2220,7 @@ const WidgetCard = ({
               fill={accent}
               fillOpacity={0.4}
             />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
           </RadarChart>
         </ResponsiveContainer>
@@ -2367,7 +2308,7 @@ const WidgetCard = ({
       return (
         <ResponsiveContainer width="100%" height="100%">
           <FunnelChart margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             <Funnel dataKey="y" nameKey="x" data={chartData} isAnimationActive>
               <LabelList
                 position="right"
@@ -2390,9 +2331,9 @@ const WidgetCard = ({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart {...props}>
             <CartesianGrid {...gridProps} vertical={false} />
-            <XAxis dataKey="x" tick={axisTick} tickMargin={6} axisLine={false} tickLine={false} />
+            <XAxis dataKey="x" tick={categoryTick} tickMargin={6} axisLine={false} tickLine={false} interval="preserveStartEnd" />
             <YAxis {...valueAxisProps} width={48} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             <Bar
               name="Median (Q2)"
@@ -2433,14 +2374,14 @@ const WidgetCard = ({
             <CartesianGrid {...gridProps} vertical={false} />
             <XAxis
               dataKey="x"
-              tick={axisTick}
+              tick={categoryTick}
               tickMargin={6}
               axisLine={false}
               tickLine={false}
               minTickGap={16}
             />
             <YAxis {...valueAxisProps} width={48} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtVal(v)} />
+            {chartTip}
             {showLegend && <Legend {...legendProps} />}
             {widget.showAverageLine && (
               <ReferenceLine
@@ -2482,13 +2423,13 @@ const WidgetCard = ({
           <CartesianGrid {...gridProps} vertical={false} />
           <XAxis
             dataKey="x"
-            tick={axisTick}
+            tick={categoryTick}
             tickMargin={6}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
-            angle={chartData.length > 8 ? -30 : 0}
-            textAnchor={chartData.length > 8 ? "end" : "middle"}
+            angle={!longLabels && chartData.length > 8 ? -30 : 0}
+            textAnchor={!longLabels && chartData.length > 8 ? "end" : "middle"}
             height={chartData.length > 8 ? 46 : 24}
           />
           <YAxis {...valueAxisProps} width={48} />
