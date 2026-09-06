@@ -11,7 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { tooltipStyle, axisStyle, gridStyle, correlationColor } from "@/lib/chart-theme";
+import { axisStyle, gridStyle, correlationColor } from "@/lib/chart-theme";
+import { ChartTooltip } from "@/components/dashboard/chart-parts";
 import { useIsDark } from "@/hooks/use-theme-mode";
 import { Link } from "@tanstack/react-router";
 import { Download, SlidersHorizontal } from "lucide-react";
@@ -28,6 +29,7 @@ export function CorrelationPage() {
 
   const [selectedPairIndex, setSelectedPairIndex] = useState(0);
   const [threshold, setThreshold] = useState(0);
+  const [hover, setHover] = useState<{ i: number; j: number } | null>(null);
 
   const top = useMemo(
     () => allTop.filter((t) => Math.abs(t.r) >= threshold).slice(0, 12),
@@ -413,6 +415,27 @@ export function CorrelationPage() {
   );
 }
 
+/** Compact numeric formatting for scatter axes and tooltips. */
+function fmtNum(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  if (abs >= 100) return n.toFixed(0);
+  if (abs >= 1) return n.toFixed(2);
+  return n.toPrecision(3);
+}
+
+/** Consistent wording for correlation strength, reused in cells, lists and annotations. */
+function strengthLabel(r: number): string {
+  const a = Math.abs(r);
+  if (a >= 0.9) return "very strong";
+  if (a >= 0.7) return "strong";
+  if (a >= 0.5) return "moderate";
+  if (a >= 0.3) return "weak";
+  return "negligible";
+}
+
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
@@ -446,7 +469,19 @@ function buildHeatmapSVG(corr: { columns: string[]; matrix: number[][] }, isDark
     const cx = labelPad + i * cell + cell / 2;
     labels += `<text x="${cx}" y="${labelPad - 8}" font-size="11" font-family="sans-serif" fill="${fg}" text-anchor="start" transform="rotate(-45 ${cx} ${labelPad - 8})">${escapeXml(name)}</text>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${bg}"/><text x="12" y="24" font-size="16" font-weight="bold" font-family="sans-serif" fill="${fg}">Correlation heatmap</text>${labels}${cells}</svg>`;
+  // Colour-scale legend so the downloaded file is readable on its own.
+  const legendY = labelPad + size + 26;
+  const legendW = Math.max(160, size - 40);
+  const legend =
+    `<defs><linearGradient id="corrScale" x1="0" y1="0" x2="1" y2="0">` +
+    `<stop offset="0%" stop-color="${correlationColor(-1, isDark)}"/>` +
+    `<stop offset="50%" stop-color="${correlationColor(0, isDark)}"/>` +
+    `<stop offset="100%" stop-color="${correlationColor(1, isDark)}"/></linearGradient></defs>` +
+    `<rect x="${labelPad}" y="${legendY}" width="${legendW}" height="10" rx="5" fill="url(#corrScale)"/>` +
+    `<text x="${labelPad - 8}" y="${legendY + 9}" font-size="11" font-family="sans-serif" fill="${fg}" text-anchor="end">-1</text>` +
+    `<text x="${labelPad + legendW + 8}" y="${legendY + 9}" font-size="11" font-family="sans-serif" fill="${fg}" text-anchor="start">+1</text>` +
+    `<text x="${labelPad}" y="${legendY + 26}" font-size="10" font-family="sans-serif" fill="${fg}" opacity="0.7">Pearson r — negative (left) to positive (right)</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + 60}" viewBox="0 0 ${w} ${h + 60}" role="img" aria-label="Correlation heatmap"><rect width="${w}" height="${h + 60}" fill="${bg}"/><text x="12" y="24" font-size="16" font-weight="bold" font-family="sans-serif" fill="${fg}">Correlation heatmap</text><text x="12" y="42" font-size="11" font-family="sans-serif" fill="${fg}" opacity="0.7">${cols.length} numeric columns · values are Pearson r</text>${labels}${cells}${legend}</svg>`;
 }
 
 function escapeXml(s: string): string {

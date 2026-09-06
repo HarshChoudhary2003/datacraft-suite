@@ -446,8 +446,11 @@ function CodeValidationPanel({ checks }: { checks: CodeValidation[] }) {
     reader: "Reader",
     schema: "Schema columns",
     cli: "Run command",
+    setup: "Setup steps",
+    syntax: "Syntax",
     general: "Checks",
   };
+
   return (
     <div
       className={`neo p-4 space-y-3 ${fullyValid ? "" : "border border-destructive/30"}`}
@@ -657,7 +660,113 @@ function readExpr(filename: string, source: string, parseDates?: string[]): stri
   return `pd.read_csv(${source}${pd})`;
 }
 
+/** Comment prefix for the setup banner in each output format. */
+function commentPrefix(tab: CodeTab): string {
+  if (tab === "sql") return "--";
+  return "#";
+}
+
+const RUN_STEPS: Record<CodeTab, { install: string; run: string; outputs: string }> = {
+  eda: {
+    install: "pip install pandas numpy matplotlib seaborn scipy",
+    run: "python eda.py",
+    outputs: "./reports/*.png summary plots + printed profile",
+  },
+  cleaning: {
+    install: "pip install pandas numpy scikit-learn",
+    run: "python cleaning.py",
+    outputs: "<dataset>_clean.csv",
+  },
+  ml: {
+    install: "pip install pandas numpy scikit-learn joblib",
+    run: "python ml_pipeline.py",
+    outputs: "model_<best>.joblib + printed leaderboard",
+  },
+  dl: {
+    install: "pip install pandas numpy scikit-learn torch",
+    run: "python dl_pipeline.py",
+    outputs: "model_best.pt + printed train/val curves",
+  },
+  etl: {
+    install: "pip install pandas numpy pandera pyarrow SQLAlchemy",
+    run: "python etl.py",
+    outputs: "curated parquet output + validation log",
+  },
+  sql: {
+    install: "no install required — run in your SQL client",
+    run: "psql -f profiling.sql  (or paste into your warehouse console)",
+    outputs: "row counts, null counts, numeric summaries, duplicate report",
+  },
+  api: {
+    install: "pip install fastapi uvicorn pydantic joblib pandas scikit-learn",
+    run: "uvicorn app:app --host 0.0.0.0 --port 8000",
+    outputs: "REST service on :8000 with /health, /predict, /docs",
+  },
+  streamlit: {
+    install: "pip install streamlit pandas plotly",
+    run: "streamlit run app.py",
+    outputs: "interactive dashboard on :8501",
+  },
+  docker: {
+    install: "install Docker Desktop or the docker engine",
+    run: "docker build -t dataiq-app . && docker run -p 8000:8000 dataiq-app",
+    outputs: "container image serving the API on :8000",
+  },
+  requirements: {
+    install: "pip install -r requirements.txt",
+    run: "python -m venv .venv && source .venv/bin/activate",
+    outputs: "reproducible Python environment",
+  },
+};
+
+/**
+ * Standardised setup banner prepended to every generated artifact: exact
+ * prerequisites, where the input file must live, the run command and the
+ * expected outputs, so the code is runnable without guesswork.
+ */
+function setupHeader(tab: CodeTab, ds: Dataset, role: Role, opts: GenOptions): string {
+  const c = commentPrefix(tab);
+  const steps = RUN_STEPS[tab];
+  const needsData = tab !== "docker" && tab !== "requirements";
+  const lines = [
+    `${c} ===========================================================================`,
+    `${c} DataIQ Pro — ${TAB_LABEL[tab]}`,
+    `${c} Dataset: ${ds.name} (${ds.rowCount} rows × ${ds.colCount} columns) · Role: ${role}`,
+    `${c} Generated: ${new Date().toISOString().slice(0, 10)} · Python 3.10+`,
+    `${c}`,
+    `${c} SETUP`,
+    `${c}   1. Create an environment:  python -m venv .venv && source .venv/bin/activate`,
+    `${c}   2. Install dependencies:   ${steps.install}`,
+  ];
+  if (needsData)
+    lines.push(
+      `${c}   3. Put the input file next to this script:  ./${ds.name}`,
+      `${c}   4. Run:  ${steps.run}`,
+    );
+  else lines.push(`${c}   3. Run:  ${steps.run}`);
+  lines.push(
+    `${c}`,
+    `${c} EXPECTED OUTPUT: ${steps.outputs}`,
+  );
+  if (tab === "ml" || tab === "dl" || tab === "etl" || tab === "api") {
+    lines.push(
+      `${c} CONFIG: target="${opts.target}" · features=${opts.features.length} · test_size=${opts.testSize}`,
+      `${c}   imputers: numeric=${opts.imputeNumeric}, categorical=${opts.imputeCategorical} · scale=${opts.scale} · encode=${opts.encode}`,
+    );
+  }
+  lines.push(
+    `${c} VALIDATION: schema, reader and run command are checked in the UI before export.`,
+    `${c} ===========================================================================`,
+    "",
+  );
+  return lines.join("\n");
+}
+
 function generate(tab: CodeTab, ds: Dataset, role: Role, opts: GenOptions): string {
+  return setupHeader(tab, ds, role, opts) + generateBody(tab, ds, role, opts);
+}
+
+function generateBody(tab: CodeTab, ds: Dataset, role: Role, opts: GenOptions): string {
   const target = { name: opts.target, kind: detectKind(ds, opts.target) };
   const features = opts.features.filter((f) => f !== target.name);
   const num = ds.profiles
@@ -1099,29 +1208,58 @@ if __name__ == "__main__":
     raise SystemExit(run())
 `;
 
-  if (tab === "sql")
-    return `-- DataIQ Pro — SQL profiling for ${ds.name}
--- Replace "your_table" with your actual table name.
+  if (tab === "sql") {
+    // Quote every identifier so mixed-case / spaced column names run unmodified,
+    // and alias with SQL-safe names so results are easy to consume downstream.
+    const q = (c: string) => `"${c.replace(/"/g, '""')}"`;
+    const cols = ds.columns.map(q).join(", ");
+    return `-- Replace your_table with your fully-qualified table name (schema.table).
+-- Tested against PostgreSQL / Snowflake / BigQuery-compatible SQL.
 
+-- 1. Row count
 SELECT COUNT(*) AS row_count FROM your_table;
 
+-- 2. Null counts per column
 SELECT
-${ds.columns.map((c) => `  SUM(CASE WHEN ${c} IS NULL THEN 1 ELSE 0 END) AS ${c.replace(/\W+/g, "_")}_nulls`).join(",\n")}
+${ds.columns.map((c) => `  SUM(CASE WHEN ${q(c)} IS NULL THEN 1 ELSE 0 END) AS ${safePy(c)}_nulls`).join(",\n")}
 FROM your_table;
 
-${allNum
-  .map(
-    (c) => `SELECT '${c}' AS col,
-  MIN(${c}) AS min, MAX(${c}) AS max, AVG(${c}) AS mean, STDDEV_SAMP(${c}) AS std,
-  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${c}) AS median
+-- 3. Numeric column summaries
+${
+      allNum.length
+        ? allNum
+            .map(
+              (c) => `SELECT '${c.replace(/'/g, "''")}' AS column_name,
+  MIN(${q(c)}) AS min_value, MAX(${q(c)}) AS max_value,
+  AVG(${q(c)}) AS mean_value, STDDEV_SAMP(${q(c)}) AS std_value,
+  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${q(c)}) AS median_value,
+  COUNT(${q(c)}) AS non_null_count
 FROM your_table;`,
-  )
-  .join("\n\n")}
+            )
+            .join("\n\n")
+        : "-- (no numeric columns detected in this dataset)"
+    }
 
--- Duplicates
-SELECT ${ds.columns.join(", ")}, COUNT(*) AS dup_count
-FROM your_table GROUP BY ${ds.columns.join(", ")} HAVING COUNT(*) > 1;
+-- 4. Category frequencies (top 20 per column)
+${
+      allCat.length
+        ? allCat
+            .map(
+              (c) => `SELECT ${q(c)} AS value, COUNT(*) AS n
+FROM your_table GROUP BY ${q(c)} ORDER BY n DESC LIMIT 20;`,
+            )
+            .join("\n\n")
+        : "-- (no categorical columns detected in this dataset)"
+    }
+
+-- 5. Exact duplicate rows
+SELECT ${cols}, COUNT(*) AS dup_count
+FROM your_table
+GROUP BY ${cols}
+HAVING COUNT(*) > 1
+ORDER BY dup_count DESC;
 `;
+  }
 
   // FastAPI service
   if (tab === "api")
@@ -1360,7 +1498,9 @@ EXPOSE 8000
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 `;
 
-  return `# Automatically generated requirements
+  return `# Pinned with >= floors that are known-compatible with the generated code.
+# For a fully reproducible build, freeze after install:  pip freeze > requirements.lock
+# Core (always required)
 pandas>=2.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
