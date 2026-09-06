@@ -11,7 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { tooltipStyle, axisStyle, gridStyle, correlationColor } from "@/lib/chart-theme";
+import { axisStyle, gridStyle, correlationColor } from "@/lib/chart-theme";
+import { ChartTooltip } from "@/components/dashboard/chart-parts";
 import { useIsDark } from "@/hooks/use-theme-mode";
 import { Link } from "@tanstack/react-router";
 import { Download, SlidersHorizontal } from "lucide-react";
@@ -28,6 +29,7 @@ export function CorrelationPage() {
 
   const [selectedPairIndex, setSelectedPairIndex] = useState(0);
   const [threshold, setThreshold] = useState(0);
+  const [hover, setHover] = useState<{ i: number; j: number } | null>(null);
 
   const top = useMemo(
     () => allTop.filter((t) => Math.abs(t.r) >= threshold).slice(0, 12),
@@ -411,6 +413,27 @@ export function CorrelationPage() {
 
     </div>
   );
+}
+
+/** Compact numeric formatting for scatter axes and tooltips. */
+function fmtNum(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  if (abs >= 100) return n.toFixed(0);
+  if (abs >= 1) return n.toFixed(2);
+  return n.toPrecision(3);
+}
+
+/** Consistent wording for correlation strength, reused in cells, lists and annotations. */
+function strengthLabel(r: number): string {
+  const a = Math.abs(r);
+  if (a >= 0.9) return "very strong";
+  if (a >= 0.7) return "strong";
+  if (a >= 0.5) return "moderate";
+  if (a >= 0.3) return "weak";
+  return "negligible";
 }
 
 function truncate(s: string, n: number): string {
