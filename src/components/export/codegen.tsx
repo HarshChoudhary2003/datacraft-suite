@@ -657,7 +657,113 @@ function readExpr(filename: string, source: string, parseDates?: string[]): stri
   return `pd.read_csv(${source}${pd})`;
 }
 
+/** Comment prefix for the setup banner in each output format. */
+function commentPrefix(tab: CodeTab): string {
+  if (tab === "sql") return "--";
+  return "#";
+}
+
+const RUN_STEPS: Record<CodeTab, { install: string; run: string; outputs: string }> = {
+  eda: {
+    install: "pip install pandas numpy matplotlib seaborn scipy",
+    run: "python eda.py",
+    outputs: "./reports/*.png summary plots + printed profile",
+  },
+  cleaning: {
+    install: "pip install pandas numpy scikit-learn",
+    run: "python cleaning.py",
+    outputs: "<dataset>_clean.csv",
+  },
+  ml: {
+    install: "pip install pandas numpy scikit-learn joblib",
+    run: "python ml_pipeline.py",
+    outputs: "model_<best>.joblib + printed leaderboard",
+  },
+  dl: {
+    install: "pip install pandas numpy scikit-learn torch",
+    run: "python dl_pipeline.py",
+    outputs: "model_best.pt + printed train/val curves",
+  },
+  etl: {
+    install: "pip install pandas numpy pandera pyarrow SQLAlchemy",
+    run: "python etl.py",
+    outputs: "curated parquet output + validation log",
+  },
+  sql: {
+    install: "no install required — run in your SQL client",
+    run: "psql -f profiling.sql  (or paste into your warehouse console)",
+    outputs: "row counts, null counts, numeric summaries, duplicate report",
+  },
+  api: {
+    install: "pip install fastapi uvicorn pydantic joblib pandas scikit-learn",
+    run: "uvicorn app:app --host 0.0.0.0 --port 8000",
+    outputs: "REST service on :8000 with /health, /predict, /docs",
+  },
+  streamlit: {
+    install: "pip install streamlit pandas plotly",
+    run: "streamlit run app.py",
+    outputs: "interactive dashboard on :8501",
+  },
+  docker: {
+    install: "install Docker Desktop or the docker engine",
+    run: "docker build -t dataiq-app . && docker run -p 8000:8000 dataiq-app",
+    outputs: "container image serving the API on :8000",
+  },
+  requirements: {
+    install: "pip install -r requirements.txt",
+    run: "python -m venv .venv && source .venv/bin/activate",
+    outputs: "reproducible Python environment",
+  },
+};
+
+/**
+ * Standardised setup banner prepended to every generated artifact: exact
+ * prerequisites, where the input file must live, the run command and the
+ * expected outputs, so the code is runnable without guesswork.
+ */
+function setupHeader(tab: CodeTab, ds: Dataset, role: Role, opts: GenOptions): string {
+  const c = commentPrefix(tab);
+  const steps = RUN_STEPS[tab];
+  const needsData = tab !== "docker" && tab !== "requirements";
+  const lines = [
+    `${c} ===========================================================================`,
+    `${c} DataIQ Pro — ${TAB_LABEL[tab]}`,
+    `${c} Dataset: ${ds.name} (${ds.rowCount} rows × ${ds.colCount} columns) · Role: ${role}`,
+    `${c} Generated: ${new Date().toISOString().slice(0, 10)} · Python 3.10+`,
+    `${c}`,
+    `${c} SETUP`,
+    `${c}   1. Create an environment:  python -m venv .venv && source .venv/bin/activate`,
+    `${c}   2. Install dependencies:   ${steps.install}`,
+  ];
+  if (needsData)
+    lines.push(
+      `${c}   3. Put the input file next to this script:  ./${ds.name}`,
+      `${c}   4. Run:  ${steps.run}`,
+    );
+  else lines.push(`${c}   3. Run:  ${steps.run}`);
+  lines.push(
+    `${c}`,
+    `${c} EXPECTED OUTPUT: ${steps.outputs}`,
+  );
+  if (tab === "ml" || tab === "dl" || tab === "etl" || tab === "api") {
+    lines.push(
+      `${c} CONFIG: target="${opts.target}" · features=${opts.features.length} · test_size=${opts.testSize}`,
+      `${c}   imputers: numeric=${opts.imputeNumeric}, categorical=${opts.imputeCategorical} · scale=${opts.scale} · encode=${opts.encode}`,
+    );
+  }
+  lines.push(
+    `${c} VALIDATION: schema, reader and run command are checked in the UI before export.`,
+    `${c} ===========================================================================`,
+    "",
+  );
+  return lines.join("\n");
+}
+
 function generate(tab: CodeTab, ds: Dataset, role: Role, opts: GenOptions): string {
+  return setupHeader(tab, ds, role, opts) + generateBody(tab, ds, role, opts);
+}
+
+function generateBody(tab: CodeTab, ds: Dataset, role: Role, opts: GenOptions): string {
   const target = { name: opts.target, kind: detectKind(ds, opts.target) };
   const features = opts.features.filter((f) => f !== target.name);
   const num = ds.profiles
