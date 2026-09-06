@@ -1205,29 +1205,58 @@ if __name__ == "__main__":
     raise SystemExit(run())
 `;
 
-  if (tab === "sql")
-    return `-- DataIQ Pro — SQL profiling for ${ds.name}
--- Replace "your_table" with your actual table name.
+  if (tab === "sql") {
+    // Quote every identifier so mixed-case / spaced column names run unmodified,
+    // and alias with SQL-safe names so results are easy to consume downstream.
+    const q = (c: string) => `"${c.replace(/"/g, '""')}"`;
+    const cols = ds.columns.map(q).join(", ");
+    return `-- Replace your_table with your fully-qualified table name (schema.table).
+-- Tested against PostgreSQL / Snowflake / BigQuery-compatible SQL.
 
+-- 1. Row count
 SELECT COUNT(*) AS row_count FROM your_table;
 
+-- 2. Null counts per column
 SELECT
-${ds.columns.map((c) => `  SUM(CASE WHEN ${c} IS NULL THEN 1 ELSE 0 END) AS ${c.replace(/\W+/g, "_")}_nulls`).join(",\n")}
+${ds.columns.map((c) => `  SUM(CASE WHEN ${q(c)} IS NULL THEN 1 ELSE 0 END) AS ${safePy(c)}_nulls`).join(",\n")}
 FROM your_table;
 
-${allNum
-  .map(
-    (c) => `SELECT '${c}' AS col,
-  MIN(${c}) AS min, MAX(${c}) AS max, AVG(${c}) AS mean, STDDEV_SAMP(${c}) AS std,
-  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${c}) AS median
+-- 3. Numeric column summaries
+${
+      allNum.length
+        ? allNum
+            .map(
+              (c) => `SELECT '${c.replace(/'/g, "''")}' AS column_name,
+  MIN(${q(c)}) AS min_value, MAX(${q(c)}) AS max_value,
+  AVG(${q(c)}) AS mean_value, STDDEV_SAMP(${q(c)}) AS std_value,
+  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${q(c)}) AS median_value,
+  COUNT(${q(c)}) AS non_null_count
 FROM your_table;`,
-  )
-  .join("\n\n")}
+            )
+            .join("\n\n")
+        : "-- (no numeric columns detected in this dataset)"
+    }
 
--- Duplicates
-SELECT ${ds.columns.join(", ")}, COUNT(*) AS dup_count
-FROM your_table GROUP BY ${ds.columns.join(", ")} HAVING COUNT(*) > 1;
+-- 4. Category frequencies (top 20 per column)
+${
+      allCat.length
+        ? allCat
+            .map(
+              (c) => `SELECT ${q(c)} AS value, COUNT(*) AS n
+FROM your_table GROUP BY ${q(c)} ORDER BY n DESC LIMIT 20;`,
+            )
+            .join("\n\n")
+        : "-- (no categorical columns detected in this dataset)"
+    }
+
+-- 5. Exact duplicate rows
+SELECT ${cols}, COUNT(*) AS dup_count
+FROM your_table
+GROUP BY ${cols}
+HAVING COUNT(*) > 1
+ORDER BY dup_count DESC;
 `;
+  }
 
   // FastAPI service
   if (tab === "api")
@@ -1466,7 +1495,9 @@ EXPOSE 8000
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 `;
 
-  return `# Automatically generated requirements
+  return `# Pinned with >= floors that are known-compatible with the generated code.
+# For a fully reproducible build, freeze after install:  pip freeze > requirements.lock
+# Core (always required)
 pandas>=2.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
