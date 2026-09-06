@@ -446,8 +446,11 @@ function CodeValidationPanel({ checks }: { checks: CodeValidation[] }) {
     reader: "Reader",
     schema: "Schema columns",
     cli: "Run command",
+    setup: "Setup steps",
+    syntax: "Syntax",
     general: "Checks",
   };
+
   return (
     <div
       className={`neo p-4 space-y-3 ${fullyValid ? "" : "border border-destructive/30"}`}
