@@ -469,7 +469,19 @@ function buildHeatmapSVG(corr: { columns: string[]; matrix: number[][] }, isDark
     const cx = labelPad + i * cell + cell / 2;
     labels += `<text x="${cx}" y="${labelPad - 8}" font-size="11" font-family="sans-serif" fill="${fg}" text-anchor="start" transform="rotate(-45 ${cx} ${labelPad - 8})">${escapeXml(name)}</text>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${bg}"/><text x="12" y="24" font-size="16" font-weight="bold" font-family="sans-serif" fill="${fg}">Correlation heatmap</text>${labels}${cells}</svg>`;
+  // Colour-scale legend so the downloaded file is readable on its own.
+  const legendY = labelPad + size + 26;
+  const legendW = Math.max(160, size - 40);
+  const legend =
+    `<defs><linearGradient id="corrScale" x1="0" y1="0" x2="1" y2="0">` +
+    `<stop offset="0%" stop-color="${correlationColor(-1, isDark)}"/>` +
+    `<stop offset="50%" stop-color="${correlationColor(0, isDark)}"/>` +
+    `<stop offset="100%" stop-color="${correlationColor(1, isDark)}"/></linearGradient></defs>` +
+    `<rect x="${labelPad}" y="${legendY}" width="${legendW}" height="10" rx="5" fill="url(#corrScale)"/>` +
+    `<text x="${labelPad - 8}" y="${legendY + 9}" font-size="11" font-family="sans-serif" fill="${fg}" text-anchor="end">-1</text>` +
+    `<text x="${labelPad + legendW + 8}" y="${legendY + 9}" font-size="11" font-family="sans-serif" fill="${fg}" text-anchor="start">+1</text>` +
+    `<text x="${labelPad}" y="${legendY + 26}" font-size="10" font-family="sans-serif" fill="${fg}" opacity="0.7">Pearson r — negative (left) to positive (right)</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + 60}" viewBox="0 0 ${w} ${h + 60}" role="img" aria-label="Correlation heatmap"><rect width="${w}" height="${h + 60}" fill="${bg}"/><text x="12" y="24" font-size="16" font-weight="bold" font-family="sans-serif" fill="${fg}">Correlation heatmap</text><text x="12" y="42" font-size="11" font-family="sans-serif" fill="${fg}" opacity="0.7">${cols.length} numeric columns · values are Pearson r</text>${labels}${cells}${legend}</svg>`;
 }
 
 function escapeXml(s: string): string {
