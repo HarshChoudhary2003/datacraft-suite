@@ -226,8 +226,11 @@ export function buildFullReportPDF(input: FullReportInput): void {
     reader: "Reader",
     schema: "Schema",
     cli: "Run command",
+    setup: "Setup steps",
+    syntax: "Syntax",
     general: "General",
   };
+
   [...errs, ...warns].forEach((c) => {
     text(`[${c.level.toUpperCase()} · ${CAT[c.category]}] ${c.msg}`, {
       size: 9,
