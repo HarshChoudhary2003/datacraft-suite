@@ -40,9 +40,9 @@ jobs:
       - name: Typecheck
         run: bunx tsc --noEmit
       - name: Unit tests (incl. notebook/dashboard security regression)
-        run: bunx vitest run
+        run: npx vitest run
       - name: Security regression suite (export escaping + CSP)
-        run: bunx vitest run src/lib/__tests__/security-regression.test.ts src/lib/__tests__/notebook-xss.test.ts
+        run: npx vitest run src/lib/__tests__/security-regression.test.ts src/lib/__tests__/notebook-xss.test.ts
 
   insights-smoke:
     runs-on: ubuntu-latest
