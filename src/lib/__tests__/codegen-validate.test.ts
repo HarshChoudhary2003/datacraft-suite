@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateGeneratedCode } from "../codegen-validate";
-import type { Dataset } from "../types";
+import type { Dataset } from "../stats";
 
 const ds = {
   name: "sales.csv",
