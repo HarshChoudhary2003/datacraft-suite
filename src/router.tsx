@@ -1,7 +1,7 @@
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
-function DefaultErrorComponent({ error, reset }: import("@tanstack/react-router").ErrorComponentProps) {
+function DefaultErrorComponent({ error: rawError, reset }: import("@tanstack/react-router").ErrorComponentProps) {
   const router = useRouter();
 
   return (
