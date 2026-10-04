@@ -18,6 +18,8 @@ import ExcelJS from "exceljs";
 import { authorizeAction, recordAudit } from "@/lib/audit.functions";
 import { getSessionId } from "@/lib/session";
 import { loadSnapshots } from "@/lib/dashboard-store";
+import { enqueueExportJob, FatalExportError, yieldToBrowser } from "@/lib/export-jobs";
+import { ExportJobsPanel } from "@/components/export/export-jobs-panel";
 
 export const Route = createFileRoute("/export")({
   head: () => ({ meta: [{ title: "Export Report — DataIQ Pro" }] }),
@@ -74,6 +76,7 @@ export function ExportPage() {
         </div>
       </div>
 
+      <ExportJobsPanel />
       <div className="flex-1 relative">
         <ReportBuilder />
       </div>
@@ -138,53 +141,103 @@ function ReportBuilder() {
       data: { sessionId: getSessionId(), role, action: "export", target, status: "ok" },
     }).catch(() => {});
 
-  const downloadHTML = async () => {
-    if (enabled.size === 0) {
-      toast.error("Pick at least one section");
-      return;
-    }
-    if (!(await authorizeExport("report.html"))) return;
-    dl(buildReport(dataset, role, [...enabled], title, note), `${stem}_report.html`, "text/html");
-    auditExport("report.html");
-    toast.success("HTML Report downloaded");
+  const authorizeOrThrow = async (target: string) => {
+    const res = await authorizeAction({
+      data: { sessionId: getSessionId(), role, action: "export", target },
+    });
+    if (!res.ok) throw new FatalExportError(res.error || "Not authorized to export.");
   };
-  const downloadPDF = async () => {
+
+  const runJob = (label: string, run: Parameters<typeof enqueueExportJob>[0]["run"]) => {
+    enqueueExportJob({
+      label,
+      maxAttempts: 3,
+      run: async (ctx) => {
+        try {
+          await run(ctx);
+          toast.success(`${label} ready`);
+        } catch (e) {
+          // Re-throw so the queue can retry; only the final failure is toasted
+          // by the job status in the panel, plus here when it is fatal.
+          if (e instanceof FatalExportError) toast.error(`${label}: ${e.message}`);
+          throw e;
+        }
+      },
+    });
+    toast.message(`${label} started — tracking in Export jobs`);
+  };
+
+  const downloadHTML = () => {
     if (enabled.size === 0) {
       toast.error("Pick at least one section");
       return;
     }
-    if (!(await authorizeExport("report.pdf"))) return;
-    const html = buildReport(dataset, role, [...enabled], title, note, true);
-    const w = window.open("", "_blank", "width=1024,height=768");
-    if (!w) {
-      toast.error("Popup blocked — allow popups to export PDF");
+    const sections = [...enabled];
+    runJob("HTML report", async (ctx) => {
+      ctx.progress(10, "Checking permissions");
+      await authorizeOrThrow("report.html");
+      ctx.progress(35, "Building report sections");
+      await yieldToBrowser();
+      const html = buildReport(dataset, role, sections, title, note);
+      if (!html || html.length < 100) throw new Error("Report came out empty");
+      ctx.progress(85, "Saving file");
+      dl(html, `${stem}_report.html`, "text/html");
+      auditExport("report.html");
+    });
+  };
+
+  const downloadPDF = () => {
+    if (enabled.size === 0) {
+      toast.error("Pick at least one section");
       return;
     }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => {
+    const sections = [...enabled];
+    // Open the window synchronously inside the click so popup blockers allow it.
+    const w = window.open("", "_blank", "width=1024,height=768");
+    runJob("PDF report", async (ctx) => {
+      if (!w || w.closed)
+        throw new FatalExportError("Popup blocked — allow popups for this site, then retry.");
+      ctx.progress(10, "Checking permissions");
+      await authorizeOrThrow("report.pdf");
+      ctx.progress(35, "Building report sections");
+      await yieldToBrowser();
+      const html = buildReport(dataset, role, sections, title, note, true);
+      ctx.progress(70, "Rendering printable document");
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      await new Promise((r) => setTimeout(r, 600));
+      if (w.closed) throw new FatalExportError("Print window was closed before it finished.");
+      ctx.progress(95, "Opening print dialog");
       w.focus();
       w.print();
-    }, 600);
-    auditExport("report.pdf");
-    toast.success("Opening print dialog → Save as PDF");
+      auditExport("report.pdf");
+    });
   };
+
   const downloadIpynb = () => {
-    dl(buildIpynb(dataset, role), `${stem}_analysis.ipynb`, "application/json");
-    toast.success("Jupyter notebook downloaded");
+    runJob("Jupyter notebook", async (ctx) => {
+      ctx.progress(30, "Generating notebook cells");
+      await yieldToBrowser();
+      const nb = buildIpynb(dataset, role);
+      ctx.progress(85, "Saving file");
+      dl(nb, `${stem}_analysis.ipynb`, "application/json");
+    });
   };
-  const downloadInteractive = async () => {
-    if (!(await authorizeExport("notebook.html"))) return;
-    // Embed the dashboard charts the user captured on the BI Dashboard page.
-    const snaps = loadSnapshots(dataset.name);
-    dl(await buildInteractiveHTML(dataset, role, snaps), `${stem}_notebook.html`, "text/html");
-    auditExport("notebook.html");
-    toast.success(
-      snaps
-        ? `Interactive notebook downloaded with ${snaps.charts.length} dashboard chart(s)`
-        : "Interactive notebook downloaded (tip: capture dashboard charts on the BI Dashboard to embed them)",
-    );
+
+  const downloadInteractive = () => {
+    runJob("Interactive HTML notebook", async (ctx) => {
+      ctx.progress(10, "Checking permissions");
+      await authorizeOrThrow("notebook.html");
+      ctx.progress(30, "Collecting dashboard charts");
+      const snaps = loadSnapshots(dataset.name);
+      ctx.progress(50, "Building interactive notebook");
+      await yieldToBrowser();
+      const html = await buildInteractiveHTML(dataset, role, snaps);
+      ctx.progress(90, "Saving file");
+      dl(html, `${stem}_notebook.html`, "text/html");
+      auditExport("notebook.html");
+    });
   };
 
   const downloadCleanCSV = () => {
@@ -219,8 +272,10 @@ function ReportBuilder() {
     toast.success("Profile JSON exported");
   };
 
-  const downloadCleanExcel = async () => {
-    try {
+  const downloadCleanExcel = () =>
+    runJob("Excel workbook", async (ctx) => {
+      ctx.progress(15, "Building workbook");
+      await yieldToBrowser();
       const workbook = new ExcelJS.Workbook();
       workbook.creator = "DataIQ Pro";
       const sheet = workbook.addWorksheet("Cleaned Data");
@@ -237,12 +292,7 @@ function ReportBuilder() {
       a.download = `${stem}_export.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Secure Excel file exported");
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to export Excel file");
-    }
-  };
+    });
 
   return (
     <motion.div variants={STAGGER} initial="hidden" animate="show" className="space-y-8">
