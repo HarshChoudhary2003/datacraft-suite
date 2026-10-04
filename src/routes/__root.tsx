@@ -27,6 +27,7 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error: rawError, reset }: import("@tanstack/react-router").ErrorComponentProps) {
+  const error = rawError as Error;
   const router = useRouter();
   const isHttpError = error?.message === "HTTPError" || error?.message?.includes("HTTPError");
   const displayMsg = isHttpError
