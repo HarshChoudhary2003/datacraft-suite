@@ -101,8 +101,14 @@ function ReportBuilder() {
     );
 
   const stem = dataset.name.replace(/\.(csv|xlsx?|json)$/i, "");
-  const dl = (content: string, filename: string, mime: string) => {
-    const blob = new Blob([content], { type: mime });
+  const dl = (
+    content: string | Blob,
+    filename: string,
+    mime: string,
+    ctx?: { attach: (b: Blob, f: string) => void },
+  ) => {
+    const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
+    ctx?.attach(blob, filename);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -155,11 +161,9 @@ function ReportBuilder() {
       run: async (ctx) => {
         try {
           await run(ctx);
-          toast.success(`${label} ready`);
         } catch (e) {
-          // Re-throw so the queue can retry; only the final failure is toasted
-          // by the job status in the panel, plus here when it is fatal.
-          if (e instanceof FatalExportError) toast.error(`${label}: ${e.message}`);
+          // Re-throw so the queue can retry; completion/failure notifications
+          // are raised by the job queue itself.
           throw e;
         }
       },
@@ -181,7 +185,7 @@ function ReportBuilder() {
       const html = buildReport(dataset, role, sections, title, note);
       if (!html || html.length < 100) throw new Error("Report came out empty");
       ctx.progress(85, "Saving file");
-      dl(html, `${stem}_report.html`, "text/html");
+      dl(html, `${stem}_report.html`, "text/html", ctx);
       auditExport("report.html");
     });
   };
@@ -202,6 +206,7 @@ function ReportBuilder() {
       ctx.progress(35, "Building report sections");
       await yieldToBrowser();
       const html = buildReport(dataset, role, sections, title, note, true);
+      ctx.attach(new Blob([html], { type: "text/html" }), `${stem}_report_printable.html`);
       ctx.progress(70, "Rendering printable document");
       w.document.open();
       w.document.write(html);
@@ -221,7 +226,7 @@ function ReportBuilder() {
       await yieldToBrowser();
       const nb = buildIpynb(dataset, role);
       ctx.progress(85, "Saving file");
-      dl(nb, `${stem}_analysis.ipynb`, "application/json");
+      dl(nb, `${stem}_analysis.ipynb`, "application/json", ctx);
     });
   };
 
@@ -235,7 +240,7 @@ function ReportBuilder() {
       await yieldToBrowser();
       const html = await buildInteractiveHTML(dataset, role, snaps);
       ctx.progress(90, "Saving file");
-      dl(html, `${stem}_notebook.html`, "text/html");
+      dl(html, `${stem}_notebook.html`, "text/html", ctx);
       auditExport("notebook.html");
     });
   };
@@ -286,12 +291,7 @@ function ReportBuilder() {
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${stem}_export.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      dl(blob, `${stem}_export.xlsx`, blob.type, ctx);
     });
 
   return (

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw, X, CheckCircle2, AlertTriangle, Loader2, Ban } from "lucide-react";
+import { RefreshCw, X, CheckCircle2, AlertTriangle, Loader2, Ban, Download } from "lucide-react";
 import {
   subscribeExportJobs,
   getExportJobs,
@@ -8,6 +8,7 @@ import {
   cancelExportJob,
   dismissExportJob,
   clearFinishedExportJobs,
+  downloadJobFile,
   type ExportJob,
 } from "@/lib/export-jobs";
 
@@ -102,6 +103,16 @@ export function ExportJobsPanel() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {job.status === "done" && job.download && (
+                    <button
+                      onClick={() => downloadJobFile(job.id)}
+                      className="neo-btn p-1.5 rounded-lg text-primary"
+                      aria-label={`Download ${job.download.filename}`}
+                      title="Download"
+                    >
+                      <Download className="size-3.5" />
+                    </button>
+                  )}
                   {(job.status === "failed" || job.status === "canceled") && (
                     <button
                       onClick={() => retryExportJob(job.id)}
