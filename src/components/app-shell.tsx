@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDataset, ROLES, type Role } from "@/store/dataset-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ExportNotificationsBell } from "@/components/export/export-notifications";
 import { ProcessingBreakdown } from "@/components/processing-breakdown";
 import { AICopilot } from "@/components/ai-copilot";
 
@@ -412,6 +413,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <History className="size-3.5 text-primary" /> v{historyIndex + 1}/{Math.max(1, history.length)}{" "}
                 <ChevronDown className="size-3 opacity-60" />
               </button>
+              <ExportNotificationsBell />
               <ThemeToggle />
               <button
                 className="neo-btn p-1.5 rounded-full text-muted-foreground hover:text-foreground"
@@ -432,6 +434,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="neo-sm px-2 py-1 text-[10px] sm:text-xs truncate max-w-[80px]">
                 {ROLES.find((r) => r.id === role)?.short}
               </div>
+              <ExportNotificationsBell />
               <ThemeToggle compact />
             </div>
           </div>
