@@ -25,6 +25,18 @@ export interface ExportJob {
   updatedAt: number;
   finishedAt?: number;
   nextRetryAt?: number;
+  /** Object URL + filename for the finished file, so it can be re-downloaded. */
+  download?: { url: string; filename: string };
+}
+
+export interface ExportNotification {
+  id: string;
+  jobId: string;
+  kind: "success" | "error";
+  label: string;
+  message: string;
+  at: number;
+  read: boolean;
 }
 
 /** Handle passed to the job body so it can report progress. */
@@ -33,6 +45,8 @@ export interface ExportJobContext {
   step: (step: string) => void;
   attempt: number;
   signal: AbortSignal;
+  /** Keep the generated file so the user can download it from notifications. */
+  attach: (blob: Blob, filename: string) => void;
 }
 
 /** Throw this from a job body to skip retries (user-actionable failure). */
@@ -53,6 +67,64 @@ const runners = new Map<string, (ctx: ExportJobContext) => Promise<void>>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 const MAX_HISTORY = 12;
+const MAX_NOTIFICATIONS = 30;
+
+let notifications: ExportNotification[] = [];
+const notifListeners = new Set<Listener>();
+function emitNotifs() {
+  notifications = [...notifications];
+  notifListeners.forEach((l) => l());
+}
+export function subscribeExportNotifications(l: Listener): () => void {
+  notifListeners.add(l);
+  return () => notifListeners.delete(l);
+}
+export function getExportNotifications(): ExportNotification[] {
+  return notifications;
+}
+export function markExportNotificationsRead() {
+  if (!notifications.some((n) => !n.read)) return;
+  notifications = notifications.map((n) => ({ ...n, read: true }));
+  emitNotifs();
+}
+export function clearExportNotifications() {
+  notifications = [];
+  emitNotifs();
+}
+export function getJobDownload(jobId: string) {
+  return jobs.find((j) => j.id === jobId)?.download;
+}
+/** Trigger a browser download for a finished job's file. */
+export function downloadJobFile(jobId: string): boolean {
+  const d = getJobDownload(jobId);
+  if (!d || typeof document === "undefined") return false;
+  const a = document.createElement("a");
+  a.href = d.url;
+  a.download = d.filename;
+  a.click();
+  return true;
+}
+function notify(jobId: string, kind: ExportNotification["kind"], message: string) {
+  const job = jobs.find((j) => j.id === jobId);
+  if (!job) return;
+  notifications = [
+    { id: newId(), jobId, kind, label: job.label, message, at: Date.now(), read: false },
+    ...notifications,
+  ].slice(0, MAX_NOTIFICATIONS);
+  emitNotifs();
+  for (const fn of notifyHooks) fn(notifications[0], job);
+}
+type NotifyHook = (n: ExportNotification, job: ExportJob) => void;
+const notifyHooks = new Set<NotifyHook>();
+/** Register a side-channel (e.g. toasts) for new notifications. */
+export function onExportNotification(fn: NotifyHook): () => void {
+  notifyHooks.add(fn);
+  return () => notifyHooks.delete(fn);
+}
+function revoke(id: string) {
+  const d = jobs.find((j) => j.id === id)?.download;
+  if (d) URL.revokeObjectURL(d.url);
+}
 const BASE_BACKOFF_MS = 800;
 
 function emit() {
@@ -94,6 +166,7 @@ function trim() {
         .slice(0, done.length - MAX_HISTORY)
         .map((j) => j.id),
     );
+    drop.forEach(revoke);
     jobs = jobs.filter((j) => !drop.has(j.id));
   }
 }
@@ -173,6 +246,10 @@ async function execute(id: string) {
       patch(id, step ? { progress: clamped, step } : { progress: clamped });
     },
     step: (step) => patch(id, { step }),
+    attach: (blob, filename) => {
+      revoke(id);
+      patch(id, { download: { url: URL.createObjectURL(blob), filename } });
+    },
   };
 
   try {
@@ -181,6 +258,8 @@ async function execute(id: string) {
       patch(id, { status: "canceled", step: "Canceled", finishedAt: Date.now() });
     } else {
       patch(id, { status: "done", progress: 100, step: "Complete", finishedAt: Date.now() });
+      const d = jobs.find((j) => j.id === id)?.download;
+      notify(id, "success", d ? `${d.filename} is ready to download` : "Export complete");
     }
     cleanup(id);
   } catch (err) {
@@ -201,6 +280,7 @@ async function execute(id: string) {
         fatal,
         finishedAt: Date.now(),
       });
+      notify(id, "error", message);
       return; // keep the runner so the user can retry manually
     }
     const delay = BASE_BACKOFF_MS * 2 ** (attempt - 1) + Math.random() * 250;
@@ -260,6 +340,7 @@ export function cancelExportJob(id: string) {
 }
 
 export function dismissExportJob(id: string) {
+  revoke(id);
   jobs = jobs.filter((j) => j.id !== id);
   runners.delete(id);
   cleanup(id);
@@ -272,6 +353,7 @@ export function clearFinishedExportJobs() {
   );
   const removed = jobs.filter((j) => !keep.includes(j));
   removed.forEach((j) => {
+    revoke(j.id);
     runners.delete(j.id);
     cleanup(j.id);
   });
