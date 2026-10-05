@@ -16,6 +16,7 @@ import {
 } from "@/lib/export-jobs";
 
 const EMPTY: never[] = [];
+let toastOwner = false;
 
 function timeAgo(t: number) {
   const s = Math.round((Date.now() - t) / 1000);
@@ -37,9 +38,11 @@ export function ExportNotificationsBell() {
   const ref = useRef<HTMLDivElement>(null);
   const unread = items.filter((n) => !n.read).length;
 
-  useEffect(
-    () =>
-      onExportNotification((n) => {
+  useEffect(() => {
+    // Both header variants mount a bell; only one should raise toasts.
+    if (toastOwner) return;
+    toastOwner = true;
+    const off = onExportNotification((n) => {
         if (n.kind === "success") {
           const canDl = Boolean(getJobDownload(n.jobId));
           toast.success(`${n.label} ready`, {
@@ -54,9 +57,12 @@ export function ExportNotificationsBell() {
             action: { label: "Retry", onClick: () => retryExportJob(n.jobId) },
           });
         }
-      }),
-    [],
-  );
+      });
+    return () => {
+      off();
+      toastOwner = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
