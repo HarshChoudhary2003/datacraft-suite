@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, X, CheckCircle2, AlertTriangle, Loader2, Ban, Download } from "lucide-react";
 import {
@@ -115,7 +116,10 @@ export function ExportJobsPanel() {
                   )}
                   {(job.status === "failed" || job.status === "canceled") && (
                     <button
-                      onClick={() => retryExportJob(job.id)}
+                      onClick={() => {
+                        if (!retryExportJob(job.id))
+                          toast.message("Load your dataset on this page to retry this export.");
+                      }}
                       className="neo-btn p-1.5 rounded-lg text-primary"
                       aria-label={`Retry ${job.label}`}
                       title="Retry"
