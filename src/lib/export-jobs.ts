@@ -74,6 +74,102 @@ const notifListeners = new Set<Listener>();
 function emitNotifs() {
   notifications = [...notifications];
   notifListeners.forEach((l) => l());
+  persist();
+}
+
+// ---------- Persistence (localStorage metadata + IndexedDB files) ----------
+const LS_KEY = "export-jobs-v1";
+const DB_NAME = "export-files";
+const STORE = "files";
+let hydrated = false;
+let persistTimer: ReturnType<typeof setTimeout> | undefined;
+
+function persist() {
+  if (!hydrated || typeof localStorage === "undefined") return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      const slim = jobs.map((j) =>
+        j.download ? { ...j, download: { url: "", filename: j.download.filename } } : j,
+      );
+      localStorage.setItem(LS_KEY, JSON.stringify({ jobs: slim, notifications }));
+    } catch {
+      /* quota or private mode — persistence is best-effort */
+    }
+  }, 150);
+}
+
+function openDb(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+async function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>) {
+  const db = await openDb();
+  if (!db) return undefined;
+  return new Promise<T | undefined>((resolve) => {
+    const tx = db.transaction(STORE, mode);
+    const r = fn(tx.objectStore(STORE));
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => resolve(undefined);
+  });
+}
+const saveFile = (id: string, blob: Blob) => void idb("readwrite", (s) => s.put(blob, id));
+const deleteFile = (id: string) => void idb("readwrite", (s) => s.delete(id));
+
+/** Restore jobs/notifications saved before a reload. Safe to call repeatedly. */
+export async function hydrateExportJobs() {
+  if (hydrated || typeof localStorage === "undefined") return;
+  hydrated = true;
+  let saved: { jobs?: ExportJob[]; notifications?: ExportNotification[] } = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+  } catch {
+    saved = {};
+  }
+  const now = Date.now();
+  const restored = (saved.jobs ?? []).map((j): ExportJob => {
+    if (j.status === "queued" || j.status === "running" || j.status === "retrying") {
+      return {
+        ...j,
+        status: "failed",
+        step: "Interrupted",
+        error: "Interrupted by page reload — retry to run it again.",
+        finishedAt: now,
+        download: undefined,
+      };
+    }
+    return { ...j, download: undefined, ...(j.download ? { pendingFile: j.download.filename } : {}) } as ExportJob;
+  });
+  const ids = new Set(jobs.map((j) => j.id));
+  jobs = [...jobs, ...restored.filter((j) => !ids.has(j.id))];
+  notifications = [...notifications, ...(saved.notifications ?? [])].slice(0, MAX_NOTIFICATIONS);
+  emit();
+  emitNotifs();
+  for (const j of restored) {
+    const filename = (j as ExportJob & { pendingFile?: string }).pendingFile;
+    if (!filename) continue;
+    const blob = await idb<Blob>("readonly", (s) => s.get(j.id));
+    if (blob) patch(j.id, { download: { url: URL.createObjectURL(blob), filename } });
+  }
+}
+
+// Labels whose job body lives on a page; that page registers a re-run handler
+// so jobs restored after a reload can still be retried.
+const retryHandlers = new Map<string, () => void>();
+export function registerExportRetry(label: string, fn: () => void): () => void {
+  retryHandlers.set(label, fn);
+  return () => {
+    if (retryHandlers.get(label) === fn) retryHandlers.delete(label);
+  };
+}
+export function canRetryExportJob(id: string) {
+  const job = jobs.find((j) => j.id === id);
+  return Boolean(job && (runners.has(id) || retryHandlers.has(job.label)));
 }
 export function subscribeExportNotifications(l: Listener): () => void {
   notifListeners.add(l);
@@ -123,7 +219,8 @@ export function onExportNotification(fn: NotifyHook): () => void {
 }
 function revoke(id: string) {
   const d = jobs.find((j) => j.id === id)?.download;
-  if (d) URL.revokeObjectURL(d.url);
+  if (d?.url) URL.revokeObjectURL(d.url);
+  deleteFile(id);
 }
 const BASE_BACKOFF_MS = 800;
 
@@ -132,6 +229,7 @@ function emit() {
   listeners.forEach((l) => {
     l();
   });
+  persist();
 }
 
 function patch(id: string, next: Partial<ExportJob>) {
@@ -139,6 +237,7 @@ function patch(id: string, next: Partial<ExportJob>) {
   listeners.forEach((l) => {
     l();
   });
+  persist();
 }
 
 export function subscribeExportJobs(listener: Listener): () => void {
@@ -248,6 +347,7 @@ async function execute(id: string) {
     step: (step) => patch(id, { step }),
     attach: (blob, filename) => {
       revoke(id);
+      saveFile(id, blob);
       patch(id, { download: { url: URL.createObjectURL(blob), filename } });
     },
   };
@@ -308,9 +408,16 @@ function cleanup(id: string) {
 }
 
 /** Manually retry a failed job (resets the attempt counter). */
-export function retryExportJob(id: string) {
+export function retryExportJob(id: string): boolean {
   const job = jobs.find((j) => j.id === id);
-  if (!job || !runners.has(id)) return;
+  if (!job) return false;
+  if (!runners.has(id)) {
+    const handler = retryHandlers.get(job.label);
+    if (!handler) return false;
+    dismissExportJob(id);
+    handler();
+    return true;
+  }
   if (job.status !== "failed" && job.status !== "canceled") return;
   patch(id, {
     status: "queued",
