@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Bell, CheckCircle2, AlertTriangle, Download, RefreshCw } from "lucide-react";
+import { Bell, CheckCircle2, AlertTriangle, Download, RefreshCw, Settings2 } from "lucide-react";
 import {
   subscribeExportNotifications,
   getExportNotifications,
@@ -13,7 +13,21 @@ import {
   retryExportJob,
   subscribeExportJobs,
   getExportJobs,
+  hydrateExportJobs,
 } from "@/lib/export-jobs";
+import {
+  EXPORT_TYPES,
+  popupPref,
+  setPopupPref,
+  subscribeNotificationPrefs,
+  getNotificationPrefs,
+  getServerNotificationPrefs,
+} from "@/lib/export-notification-prefs";
+
+function retryOrExplain(jobId: string) {
+  if (!retryExportJob(jobId))
+    toast.message("Open the Export page with your dataset loaded to retry this export.");
+}
 
 const EMPTY: never[] = [];
 let toastOwner = false;
@@ -34,7 +48,12 @@ export function ExportNotificationsBell() {
   );
   // Re-render when job downloads change so links stay accurate.
   useSyncExternalStore(subscribeExportJobs, getExportJobs, () => EMPTY);
+  useSyncExternalStore(subscribeNotificationPrefs, getNotificationPrefs, getServerNotificationPrefs);
   const [open, setOpen] = useState(false);
+  const [showPrefs, setShowPrefs] = useState(false);
+  useEffect(() => {
+    void hydrateExportJobs();
+  }, []);
   const ref = useRef<HTMLDivElement>(null);
   const unread = items.filter((n) => !n.read).length;
 
@@ -43,7 +62,9 @@ export function ExportNotificationsBell() {
     if (toastOwner) return;
     toastOwner = true;
     const off = onExportNotification((n) => {
+        const pref = popupPref(n.label);
         if (n.kind === "success") {
+          if (!pref.success) return;
           const canDl = Boolean(getJobDownload(n.jobId));
           toast.success(`${n.label} ready`, {
             description: n.message,
@@ -52,9 +73,10 @@ export function ExportNotificationsBell() {
               : undefined,
           });
         } else {
+          if (!pref.failure) return;
           toast.error(`${n.label} failed`, {
             description: n.message,
-            action: { label: "Retry", onClick: () => retryExportJob(n.jobId) },
+            action: { label: "Retry", onClick: () => retryOrExplain(n.jobId) },
           });
         }
       });
@@ -104,15 +126,64 @@ export function ExportNotificationsBell() {
         >
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <span className="text-sm font-bold">Notifications</span>
-            {items.length > 0 && (
+            <div className="flex items-center gap-3">
+              {items.length > 0 && !showPrefs && (
+                <button
+                  onClick={clearExportNotifications}
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
               <button
-                onClick={clearExportNotifications}
-                className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                onClick={() => setShowPrefs((v) => !v)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Pop-up settings"
+                aria-pressed={showPrefs}
+                title="Pop-up settings"
               >
-                Clear all
+                <Settings2 className="size-4" />
               </button>
-            )}
+            </div>
           </div>
+          {showPrefs ? (
+            <div className="px-4 py-3">
+              <p className="text-xs text-muted-foreground mb-3">
+                Choose which alerts pop up. All alerts still appear in this list.
+              </p>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-muted-foreground">
+                    <th scope="col" className="text-left font-medium pb-2">Export</th>
+                    <th scope="col" className="font-medium pb-2 w-16">Ready</th>
+                    <th scope="col" className="font-medium pb-2 w-16">Failed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {EXPORT_TYPES.map((label) => {
+                    const p = popupPref(label);
+                    return (
+                      <tr key={label} className="border-t border-border">
+                        <th scope="row" className="text-left font-medium py-2">{label}</th>
+                        {(["success", "failure"] as const).map((k) => (
+                          <td key={k} className="text-center">
+                            <input
+                              type="checkbox"
+                              className="size-4 accent-primary"
+                              checked={p[k]}
+                              onChange={(e) => setPopupPref(label, k, e.target.checked)}
+                              aria-label={`${label}: pop-up when ${k === "success" ? "ready" : "failed"}`}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+          <>
           {items.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground text-center">
               No export notifications yet.
@@ -145,7 +216,7 @@ export function ExportNotificationsBell() {
                         )}
                         {n.kind === "error" && (
                           <button
-                            onClick={() => retryExportJob(n.jobId)}
+                            onClick={() => retryOrExplain(n.jobId)}
                             className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
                           >
                             <RefreshCw className="size-3" /> Retry
@@ -164,6 +235,8 @@ export function ExportNotificationsBell() {
                 );
               })}
             </ul>
+          )}
+          </>
           )}
         </div>
       )}

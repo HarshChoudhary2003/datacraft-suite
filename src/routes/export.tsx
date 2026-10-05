@@ -12,13 +12,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { buildIpynb, buildInteractiveHTML } from "@/lib/notebook";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ExcelJS from "exceljs";
 import { authorizeAction, recordAudit } from "@/lib/audit.functions";
 import { getSessionId } from "@/lib/session";
 import { loadSnapshots } from "@/lib/dashboard-store";
-import { enqueueExportJob, FatalExportError, yieldToBrowser } from "@/lib/export-jobs";
+import {
+  enqueueExportJob,
+  FatalExportError,
+  registerExportRetry,
+  yieldToBrowser,
+} from "@/lib/export-jobs";
 import { ExportJobsPanel } from "@/components/export/export-jobs-panel";
 
 export const Route = createFileRoute("/export")({
@@ -89,6 +94,20 @@ function ReportBuilder() {
   const [enabled, setEnabled] = useState<Set<Section>>(new Set(SECTIONS.map((s) => s.id)));
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [note, setNote] = useState(DEFAULT_NOTE);
+
+  // Lets jobs restored after a reload be retried: handlers are refreshed each
+  // render so they always use the current dataset and settings.
+  const retryRef = useRef<Record<string, () => void>>({});
+  useEffect(() => {
+    const offs = [
+      "HTML report",
+      "PDF report",
+      "Jupyter notebook",
+      "Interactive HTML notebook",
+      "Excel workbook",
+    ].map((label) => registerExportRetry(label, () => retryRef.current[label]?.()));
+    return () => offs.forEach((o) => o());
+  }, []);
 
   if (!dataset)
     return (
@@ -293,6 +312,14 @@ function ReportBuilder() {
       });
       dl(blob, `${stem}_export.xlsx`, blob.type, ctx);
     });
+
+  retryRef.current = {
+    "HTML report": downloadHTML,
+    "PDF report": downloadPDF,
+    "Jupyter notebook": downloadIpynb,
+    "Interactive HTML notebook": downloadInteractive,
+    "Excel workbook": downloadCleanExcel,
+  };
 
   return (
     <motion.div variants={STAGGER} initial="hidden" animate="show" className="space-y-8">
