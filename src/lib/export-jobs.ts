@@ -475,3 +475,49 @@ export function yieldToBrowser(): Promise<void> {
     setTimeout(resolve, 0);
   });
 }
+
+// ---------- Bulk cleanup ----------
+const isTerminal = (j: ExportJob) =>
+  j.status === "done" || j.status === "failed" || j.status === "canceled";
+
+/** Remove many finished jobs (and their saved files) at once. Active jobs are skipped. */
+export function dismissExportJobs(ids: string[], alsoNotifications = true) {
+  const drop = new Set(jobs.filter((j) => ids.includes(j.id) && isTerminal(j)).map((j) => j.id));
+  if (!drop.size) return 0;
+  drop.forEach((id) => {
+    revoke(id);
+    runners.delete(id);
+    cleanup(id);
+  });
+  jobs = jobs.filter((j) => !drop.has(j.id));
+  emit();
+  if (alsoNotifications) {
+    notifications = notifications.filter((n) => !drop.has(n.jobId));
+    emitNotifs();
+  }
+  return drop.size;
+}
+
+/** Remove finished jobs older than the given age. Returns how many were removed. */
+export function removeExportJobsOlderThan(ms: number) {
+  const cutoff = Date.now() - ms;
+  return dismissExportJobs(
+    jobs.filter((j) => isTerminal(j) && (j.finishedAt ?? j.createdAt) < cutoff).map((j) => j.id),
+  );
+}
+
+export function dismissExportNotification(id: string) {
+  notifications = notifications.filter((n) => n.id !== id);
+  emitNotifs();
+}
+
+export function clearReadExportNotifications() {
+  notifications = notifications.filter((n) => !n.read);
+  emitNotifs();
+}
+
+export function removeExportNotificationsOlderThan(ms: number) {
+  const cutoff = Date.now() - ms;
+  notifications = notifications.filter((n) => n.at >= cutoff);
+  emitNotifs();
+}

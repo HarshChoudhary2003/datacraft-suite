@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Bell, CheckCircle2, AlertTriangle, Download, RefreshCw, Settings2 } from "lucide-react";
+import { Bell, CheckCircle2, AlertTriangle, Download, RefreshCw, Settings2, X, Search } from "lucide-react";
 import {
   subscribeExportNotifications,
   getExportNotifications,
@@ -14,6 +14,9 @@ import {
   subscribeExportJobs,
   getExportJobs,
   hydrateExportJobs,
+  dismissExportNotification,
+  clearReadExportNotifications,
+  removeExportNotificationsOlderThan,
 } from "@/lib/export-jobs";
 import {
   EXPORT_TYPES,
@@ -51,6 +54,13 @@ export function ExportNotificationsBell() {
   useSyncExternalStore(subscribeNotificationPrefs, getNotificationPrefs, getServerNotificationPrefs);
   const [open, setOpen] = useState(false);
   const [showPrefs, setShowPrefs] = useState(false);
+  const [q, setQ] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "success" | "error">("all");
+  const shown = items.filter(
+    (n) =>
+      (kindFilter === "all" || n.kind === kindFilter) &&
+      (!q.trim() || `${n.label} ${n.message}`.toLowerCase().includes(q.trim().toLowerCase())),
+  );
   useEffect(() => {
     void hydrateExportJobs();
   }, []);
@@ -184,16 +194,51 @@ export function ExportNotificationsBell() {
             </div>
           ) : (
           <>
-          {items.length === 0 ? (
+            {items.length > 0 && (
+              <div className="px-4 pt-3 pb-2 space-y-2 border-b border-border">
+                <div className="flex gap-2">
+                  <label className="relative flex-1">
+                    <span className="sr-only">Search notifications</span>
+                    <Search className="size-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="search"
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Search"
+                      className="w-full rounded-md border border-border bg-background pl-7 pr-2 py-1 text-xs"
+                    />
+                  </label>
+                  <select
+                    aria-label="Filter notifications"
+                    value={kindFilter}
+                    onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
+                    className="rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+                  >
+                    <option value="all">All</option>
+                    <option value="success">Ready</option>
+                    <option value="error">Failed</option>
+                  </select>
+                </div>
+                <div className="flex gap-3 text-xs">
+                  <button onClick={clearReadExportNotifications} className="text-muted-foreground hover:text-foreground hover:underline">
+                    Clear read
+                  </button>
+                  <button onClick={() => removeExportNotificationsOlderThan(7 * 86_400_000)} className="text-muted-foreground hover:text-foreground hover:underline">
+                    Clear older than 7 days
+                  </button>
+                </div>
+              </div>
+            )}
+          {shown.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground text-center">
-              No export notifications yet.
+              {items.length ? "No notifications match." : "No export notifications yet."}
             </p>
           ) : (
             <ul className="max-h-96 overflow-y-auto divide-y divide-border">
-              {items.map((n) => {
+              {shown.map((n) => {
                 const dl = getJobDownload(n.jobId);
                 return (
-                  <li key={n.id} className="px-4 py-3 flex gap-3">
+                  <li key={n.id} className="px-4 py-3 flex gap-3 group">
                     {n.kind === "success" ? (
                       <CheckCircle2 className="size-4 mt-0.5 shrink-0 text-primary" />
                     ) : (
@@ -231,6 +276,13 @@ export function ExportNotificationsBell() {
                         </Link>
                       </div>
                     </div>
+                    <button
+                      onClick={() => dismissExportNotification(n.id)}
+                      className="self-start text-muted-foreground hover:text-foreground"
+                      aria-label={`Remove notification: ${n.label}`}
+                    >
+                      <X className="size-3.5" />
+                    </button>
                   </li>
                 );
               })}
