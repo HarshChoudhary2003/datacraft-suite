@@ -418,7 +418,7 @@ export function retryExportJob(id: string): boolean {
     handler();
     return true;
   }
-  if (job.status !== "failed" && job.status !== "canceled") return;
+  if (job.status !== "failed" && job.status !== "canceled") return false;
   patch(id, {
     status: "queued",
     attempt: 0,
@@ -429,6 +429,7 @@ export function retryExportJob(id: string): boolean {
     finishedAt: undefined,
   });
   void execute(id);
+  return true;
 }
 
 export function cancelExportJob(id: string) {
