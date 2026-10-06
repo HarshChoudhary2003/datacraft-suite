@@ -89,15 +89,24 @@ export function ExportPage() {
   );
 }
 
+interface ExportInputs {
+  dataset: NonNullable<ReturnType<typeof useDataset>["dataset"]>;
+  role: ReturnType<typeof useDataset>["role"];
+  sections: Section[];
+  title: string;
+  note: string;
+  capturedAt: number;
+  snapshots?: ReturnType<typeof loadSnapshots>;
+}
+
 function ReportBuilder() {
   const { dataset, role } = useDataset();
   const [enabled, setEnabled] = useState<Set<Section>>(new Set(SECTIONS.map((s) => s.id)));
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [note, setNote] = useState(DEFAULT_NOTE);
 
-  // Lets jobs restored after a reload be retried: handlers are refreshed each
-  // render so they always use the current dataset and settings.
-  const retryRef = useRef<Record<string, () => void>>({});
+  // Lets jobs restored after a reload be retried with their saved inputs.
+  const retryRef = useRef<((label: string, data: unknown) => void) | null>(null);
   useEffect(() => {
     const offs = [
       "HTML report",
@@ -105,7 +114,7 @@ function ReportBuilder() {
       "Jupyter notebook",
       "Interactive HTML notebook",
       "Excel workbook",
-    ].map((label) => registerExportRetry(label, () => retryRef.current[label]?.()));
+    ].map((label) => registerExportRetry(label, (data) => retryRef.current?.(label, data)));
     return () => offs.forEach((o) => o());
   }, []);
 
@@ -173,96 +182,138 @@ function ReportBuilder() {
     if (!res.ok) throw new FatalExportError(res.error || "Not authorized to export.");
   };
 
-  const runJob = (label: string, run: Parameters<typeof enqueueExportJob>[0]["run"]) => {
+  type Inputs = ExportInputs;
+  const captureInputs = (): Inputs => ({
+    dataset: dataset!,
+    role,
+    sections: [...enabled],
+    title,
+    note,
+    capturedAt: Date.now(),
+  });
+
+  const runJob = (label: string, inp: Inputs, run: (ctx: Parameters<typeof enqueueExportJob>[0]["run"] extends (c: infer C) => unknown ? C : never) => Promise<void>) => {
+    const stemOf = inp.dataset.name.replace(/\.(csv|xlsx?|json)$/i, "");
     enqueueExportJob({
       label,
       maxAttempts: 3,
-      run: async (ctx) => {
-        try {
-          await run(ctx);
-        } catch (e) {
-          // Re-throw so the queue can retry; completion/failure notifications
-          // are raised by the job queue itself.
-          throw e;
-        }
+      inputs: {
+        settings: {
+          dataset: inp.dataset.name,
+          rows: inp.dataset.rowCount,
+          columns: inp.dataset.colCount,
+          role: inp.role,
+          sections: inp.sections,
+          title: inp.title,
+          note: inp.note,
+          capturedAt: inp.capturedAt,
+          file: stemOf,
+        },
+        data: inp,
       },
+      run,
     });
     toast.message(`${label} started — tracking in Export jobs`);
   };
 
-  const downloadHTML = () => {
-    if (enabled.size === 0) {
-      toast.error("Pick at least one section");
-      return;
+  // Every job body reads only from its frozen inputs, so a retry (even after a
+  // reload) reproduces the original export exactly.
+  const startJob = (label: string, inp: Inputs, w?: Window | null) => {
+    const stem = inp.dataset.name.replace(/\.(csv|xlsx?|json)$/i, "");
+    const ds = inp.dataset;
+    switch (label) {
+      case "HTML report":
+        return runJob(label, inp, async (ctx) => {
+          ctx.progress(10, "Checking permissions");
+          await authorizeOrThrow("report.html");
+          ctx.progress(35, "Building report sections");
+          await yieldToBrowser();
+          const html = buildReport(ds, inp.role, inp.sections, inp.title, inp.note);
+          if (!html || html.length < 100) throw new Error("Report came out empty");
+          ctx.progress(85, "Saving file");
+          dl(html, `${stem}_report.html`, "text/html", ctx);
+          auditExport("report.html");
+        });
+      case "PDF report":
+        return runJob(label, inp, async (ctx) => {
+          if (!w || w.closed)
+            throw new FatalExportError("Popup blocked — allow popups for this site, then retry.");
+          ctx.progress(10, "Checking permissions");
+          await authorizeOrThrow("report.pdf");
+          ctx.progress(35, "Building report sections");
+          await yieldToBrowser();
+          const html = buildReport(ds, inp.role, inp.sections, inp.title, inp.note, true);
+          ctx.attach(new Blob([html], { type: "text/html" }), `${stem}_report_printable.html`);
+          ctx.progress(70, "Rendering printable document");
+          w.document.open();
+          w.document.write(html);
+          w.document.close();
+          await new Promise((r) => setTimeout(r, 600));
+          if (w.closed) throw new FatalExportError("Print window was closed before it finished.");
+          ctx.progress(95, "Opening print dialog");
+          w.focus();
+          w.print();
+          auditExport("report.pdf");
+        });
+      case "Jupyter notebook":
+        return runJob(label, inp, async (ctx) => {
+          ctx.progress(30, "Generating notebook cells");
+          await yieldToBrowser();
+          const nb = buildIpynb(ds, inp.role);
+          ctx.progress(85, "Saving file");
+          dl(nb, `${stem}_analysis.ipynb`, "application/json", ctx);
+        });
+      case "Interactive HTML notebook":
+        return runJob(label, inp, async (ctx) => {
+          ctx.progress(10, "Checking permissions");
+          await authorizeOrThrow("notebook.html");
+          ctx.progress(50, "Building interactive notebook");
+          await yieldToBrowser();
+          const html = await buildInteractiveHTML(ds, inp.role, inp.snapshots ?? null);
+          ctx.progress(90, "Saving file");
+          dl(html, `${stem}_notebook.html`, "text/html", ctx);
+          auditExport("notebook.html");
+        });
+      case "Excel workbook":
+        return runJob(label, inp, async (ctx) => {
+          ctx.progress(15, "Building workbook");
+          await yieldToBrowser();
+          const workbook = new ExcelJS.Workbook();
+          workbook.creator = "DataIQ Pro";
+          const sheet = workbook.addWorksheet("Cleaned Data");
+          sheet.columns = ds.columns.map((c) => ({ header: c, key: c, width: 20 }));
+          ds.rows.forEach((r) => sheet.addRow(r));
+          sheet.getRow(1).font = { bold: true };
+          const buffer = await workbook.xlsx.writeBuffer();
+          const blob = new Blob([buffer], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+          dl(blob, `${stem}_export.xlsx`, blob.type, ctx);
+        });
     }
-    const sections = [...enabled];
-    runJob("HTML report", async (ctx) => {
-      ctx.progress(10, "Checking permissions");
-      await authorizeOrThrow("report.html");
-      ctx.progress(35, "Building report sections");
-      await yieldToBrowser();
-      const html = buildReport(dataset, role, sections, title, note);
-      if (!html || html.length < 100) throw new Error("Report came out empty");
-      ctx.progress(85, "Saving file");
-      dl(html, `${stem}_report.html`, "text/html", ctx);
-      auditExport("report.html");
-    });
   };
 
-  const downloadPDF = () => {
+  const needSections = () => {
     if (enabled.size === 0) {
       toast.error("Pick at least one section");
-      return;
+      return false;
     }
-    const sections = [...enabled];
+    return true;
+  };
+  const downloadHTML = () => needSections() && startJob("HTML report", captureInputs());
+  const downloadPDF = () => {
+    if (!needSections()) return;
     // Open the window synchronously inside the click so popup blockers allow it.
     const w = window.open("", "_blank", "width=1024,height=768");
-    runJob("PDF report", async (ctx) => {
-      if (!w || w.closed)
-        throw new FatalExportError("Popup blocked — allow popups for this site, then retry.");
-      ctx.progress(10, "Checking permissions");
-      await authorizeOrThrow("report.pdf");
-      ctx.progress(35, "Building report sections");
-      await yieldToBrowser();
-      const html = buildReport(dataset, role, sections, title, note, true);
-      ctx.attach(new Blob([html], { type: "text/html" }), `${stem}_report_printable.html`);
-      ctx.progress(70, "Rendering printable document");
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      await new Promise((r) => setTimeout(r, 600));
-      if (w.closed) throw new FatalExportError("Print window was closed before it finished.");
-      ctx.progress(95, "Opening print dialog");
-      w.focus();
-      w.print();
-      auditExport("report.pdf");
-    });
+    startJob("PDF report", captureInputs(), w);
   };
-
-  const downloadIpynb = () => {
-    runJob("Jupyter notebook", async (ctx) => {
-      ctx.progress(30, "Generating notebook cells");
-      await yieldToBrowser();
-      const nb = buildIpynb(dataset, role);
-      ctx.progress(85, "Saving file");
-      dl(nb, `${stem}_analysis.ipynb`, "application/json", ctx);
+  const downloadIpynb = () => startJob("Jupyter notebook", captureInputs());
+  const downloadInteractive = () =>
+    startJob("Interactive HTML notebook", {
+      ...captureInputs(),
+      snapshots: loadSnapshots(dataset!.name),
     });
-  };
-
-  const downloadInteractive = () => {
-    runJob("Interactive HTML notebook", async (ctx) => {
-      ctx.progress(10, "Checking permissions");
-      await authorizeOrThrow("notebook.html");
-      ctx.progress(30, "Collecting dashboard charts");
-      const snaps = loadSnapshots(dataset.name);
-      ctx.progress(50, "Building interactive notebook");
-      await yieldToBrowser();
-      const html = await buildInteractiveHTML(dataset, role, snaps);
-      ctx.progress(90, "Saving file");
-      dl(html, `${stem}_notebook.html`, "text/html", ctx);
-      auditExport("notebook.html");
-    });
-  };
+  const downloadCleanExcel = () => startJob("Excel workbook", captureInputs());
 
   const downloadCleanCSV = () => {
     const cols = dataset.columns;
@@ -296,30 +347,13 @@ function ReportBuilder() {
     toast.success("Profile JSON exported");
   };
 
-  const downloadCleanExcel = () =>
-    runJob("Excel workbook", async (ctx) => {
-      ctx.progress(15, "Building workbook");
-      await yieldToBrowser();
-      const workbook = new ExcelJS.Workbook();
-      workbook.creator = "DataIQ Pro";
-      const sheet = workbook.addWorksheet("Cleaned Data");
-      sheet.columns = dataset.columns.map((c) => ({ header: c, key: c, width: 20 }));
-      dataset.rows.forEach((r) => sheet.addRow(r));
-      sheet.getRow(1).font = { bold: true };
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      dl(blob, `${stem}_export.xlsx`, blob.type, ctx);
-    });
 
-  retryRef.current = {
-    "HTML report": downloadHTML,
-    "PDF report": downloadPDF,
-    "Jupyter notebook": downloadIpynb,
-    "Interactive HTML notebook": downloadInteractive,
-    "Excel workbook": downloadCleanExcel,
+  retryRef.current = (label, data) => {
+    const inp = data as Inputs;
+    const w = label === "PDF report" ? window.open("", "_blank", "width=1024,height=768") : null;
+    startJob(label, inp, w);
   };
+
 
   return (
     <motion.div variants={STAGGER} initial="hidden" animate="show" className="space-y-8">
