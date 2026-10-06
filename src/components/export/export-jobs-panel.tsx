@@ -211,6 +211,15 @@ export function ExportJobsPanel() {
                       </span>
                     )}
                   </div>
+                  {job.settings && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate" title={JSON.stringify(job.settings, null, 2)}>
+                      {String(job.settings.dataset ?? "")}
+                      {job.settings.rows != null && ` · ${job.settings.rows} rows`}
+                      {job.settings.role != null && ` · ${String(job.settings.role)}`}
+                      {Array.isArray(job.settings.sections) && ` · ${job.settings.sections.length} sections`}
+                      {job.hasSnapshot ? " · inputs saved" : ""}
+                    </p>
+                  )}
                   <p
                     className={`text-xs mt-0.5 ${job.status === "failed" ? "text-destructive" : "text-muted-foreground"}`}
                     aria-live="polite"

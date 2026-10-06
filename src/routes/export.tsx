@@ -269,7 +269,7 @@ function ReportBuilder() {
           await authorizeOrThrow("notebook.html");
           ctx.progress(50, "Building interactive notebook");
           await yieldToBrowser();
-          const html = await buildInteractiveHTML(ds, inp.role, inp.snapshots ?? []);
+          const html = await buildInteractiveHTML(ds, inp.role, inp.snapshots ?? null);
           ctx.progress(90, "Saving file");
           dl(html, `${stem}_notebook.html`, "text/html", ctx);
           auditExport("notebook.html");
