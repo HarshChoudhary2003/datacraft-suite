@@ -27,6 +27,10 @@ export interface ExportJob {
   nextRetryAt?: number;
   /** Object URL + filename for the finished file, so it can be re-downloaded. */
   download?: { url: string; filename: string };
+  /** Settings captured when the job was queued (shown to the user, kept for retry). */
+  settings?: Record<string, unknown>;
+  /** True when a full input snapshot (dataset etc.) is saved for exact retries. */
+  hasSnapshot?: boolean;
 }
 
 export interface ExportNotification {
@@ -119,7 +123,19 @@ async function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
   });
 }
 const saveFile = (id: string, blob: Blob) => void idb("readwrite", (s) => s.put(blob, id));
-const deleteFile = (id: string) => void idb("readwrite", (s) => s.delete(id));
+const deleteFile = (id: string) => {
+  void idb("readwrite", (s) => s.delete(id));
+  void idb("readwrite", (s) => s.delete(`input:${id}`));
+};
+function saveInput(id: string, data: unknown) {
+  void idb("readwrite", (s) => s.put(data, `input:${id}`)).then((r) => {
+    if (r === undefined) patch(id, { hasSnapshot: false });
+  });
+}
+/** Load the frozen inputs saved for a job, if any. */
+export function loadExportJobInputs(id: string): Promise<unknown> {
+  return idb<unknown>("readonly", (s) => s.get(`input:${id}`));
+}
 
 /** Restore jobs/notifications saved before a reload. Safe to call repeatedly. */
 export async function hydrateExportJobs() {
@@ -160,8 +176,8 @@ export async function hydrateExportJobs() {
 
 // Labels whose job body lives on a page; that page registers a re-run handler
 // so jobs restored after a reload can still be retried.
-const retryHandlers = new Map<string, () => void>();
-export function registerExportRetry(label: string, fn: () => void): () => void {
+const retryHandlers = new Map<string, (data: unknown) => void>();
+export function registerExportRetry(label: string, fn: (data: unknown) => void): () => void {
   retryHandlers.set(label, fn);
   return () => {
     if (retryHandlers.get(label) === fn) retryHandlers.delete(label);
@@ -278,10 +294,17 @@ export interface EnqueueOptions {
   label: string;
   run: (ctx: ExportJobContext) => Promise<void>;
   maxAttempts?: number;
+  /** Frozen inputs: `settings` is stored with the job, `data` in IndexedDB. */
+  inputs?: { settings: Record<string, unknown>; data: unknown };
 }
 
 /** Queue an export. Returns the job id; resolution is observed via the queue. */
-export function enqueueExportJob({ label, run, maxAttempts = 3 }: EnqueueOptions): string {
+export function enqueueExportJob({
+  label,
+  run,
+  maxAttempts = 3,
+  inputs,
+}: EnqueueOptions): string {
   const id = newId();
   const now = Date.now();
   jobs = [
@@ -295,10 +318,13 @@ export function enqueueExportJob({ label, run, maxAttempts = 3 }: EnqueueOptions
       maxAttempts: Math.max(1, maxAttempts),
       createdAt: now,
       updatedAt: now,
+      settings: inputs?.settings,
+      hasSnapshot: Boolean(inputs?.data),
     },
     ...jobs,
   ];
   runners.set(id, run);
+  if (inputs?.data !== undefined) saveInput(id, inputs.data);
   trim();
   emit();
   // Let the click handler finish (and the UI paint) before heavy work starts.
@@ -413,9 +439,22 @@ export function retryExportJob(id: string): boolean {
   if (!job) return false;
   if (!runners.has(id)) {
     const handler = retryHandlers.get(job.label);
-    if (!handler) return false;
-    dismissExportJob(id);
-    handler();
+    if (!handler || !job.hasSnapshot) return false;
+    // Rebuild from the saved snapshot so the retry reproduces the original.
+    patch(id, { status: "queued", step: "Loading saved inputs", error: undefined });
+    void loadExportJobInputs(id).then((data) => {
+      if (data === undefined) {
+        patch(id, {
+          status: "failed",
+          step: "Failed",
+          error: "Saved inputs for this export are no longer available.",
+          hasSnapshot: false,
+        });
+        return;
+      }
+      dismissExportJob(id);
+      handler(data);
+    });
     return true;
   }
   if (job.status !== "failed" && job.status !== "canceled") return false;
