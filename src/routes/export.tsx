@@ -22,6 +22,7 @@ import {
   enqueueExportJob,
   FatalExportError,
   registerExportRetry,
+  registerSnapshotVerifier,
   yieldToBrowser,
 } from "@/lib/export-jobs";
 import { ExportJobsPanel } from "@/components/export/export-jobs-panel";
@@ -113,6 +114,29 @@ function datasetFingerprint(ds: { columns: string[]; rows: Record<string, unknow
   return (h >>> 0).toString(16).padStart(8, "0") + "-" + ds.rows.length.toString(36);
 }
 
+/** Compare a saved snapshot against the fingerprint recorded when it was queued. */
+function verifySnapshot(settings: Record<string, unknown> | undefined, data: unknown): string | null {
+  const ds = (data as { dataset?: { columns?: unknown; rows?: unknown; name?: string } } | null)?.dataset;
+  if (!ds || !Array.isArray(ds.columns) || !Array.isArray(ds.rows))
+    return "the saved snapshot is missing its dataset or is damaged.";
+  if (!settings?.fingerprint) return null; // older export: nothing to compare against
+  const actual = datasetFingerprint(ds as { columns: string[]; rows: Record<string, unknown>[] });
+  if (actual === settings.fingerprint) return null;
+  const reasons: string[] = [];
+  if (settings.rows != null && settings.rows !== ds.rows.length)
+    reasons.push(`it has ${ds.rows.length} rows but ${String(settings.rows)} were saved`);
+  if (settings.columns != null && settings.columns !== ds.columns.length)
+    reasons.push(`it has ${ds.columns.length} columns but ${String(settings.columns)} were saved`);
+  if (Array.isArray(settings.columnNames)) {
+    const saved = settings.columnNames as string[];
+    const now = (ds.columns as string[]).slice(0, saved.length);
+    const missing = saved.filter((c) => !now.includes(c));
+    if (missing.length) reasons.push(`columns changed or missing: ${missing.join(", ")}`);
+  }
+  if (!reasons.length) reasons.push("the row and column counts match, but some cell values differ");
+  return `the snapshot's fingerprint is #${actual}, expected #${String(settings.fingerprint)}: ${reasons.join("; ")}.`;
+}
+
 function ReportBuilder() {
   const { dataset: maybeDataset, role } = useDataset();
   // Retries rebuild from saved snapshots, so the handlers below must exist
@@ -132,7 +156,11 @@ function ReportBuilder() {
       "Interactive HTML notebook",
       "Excel workbook",
     ].map((label) => registerExportRetry(label, (data) => retryRef.current?.(label, data)));
-    return () => offs.forEach((o) => o());
+    const offVerify = registerSnapshotVerifier((job, data) => verifySnapshot(job.settings, data));
+    return () => {
+      offs.forEach((o) => o());
+      offVerify();
+    };
   }, []);
 
   const stem = (maybeDataset?.name ?? "").replace(/\.(csv|xlsx?|json)$/i, "");

@@ -183,6 +183,16 @@ export function registerExportRetry(label: string, fn: (data: unknown) => void):
     if (retryHandlers.get(label) === fn) retryHandlers.delete(label);
   };
 }
+// Optional integrity check run on a saved snapshot before it is retried.
+// Returns null when the snapshot is intact, or an explanation of the mismatch.
+type SnapshotVerifier = (job: ExportJob, data: unknown) => string | null;
+let snapshotVerifier: SnapshotVerifier | null = null;
+export function registerSnapshotVerifier(fn: SnapshotVerifier): () => void {
+  snapshotVerifier = fn;
+  return () => {
+    if (snapshotVerifier === fn) snapshotVerifier = null;
+  };
+}
 export function canRetryExportJob(id: string) {
   const job = jobs.find((j) => j.id === id);
   return Boolean(job && (runners.has(id) || retryHandlers.has(job.label)));
@@ -450,6 +460,15 @@ export function retryExportJob(id: string): boolean {
           error: "Saved inputs for this export are no longer available.",
           hasSnapshot: false,
         });
+        return;
+      }
+      patch(id, { step: "Verifying snapshot integrity" });
+      const current = jobs.find((j) => j.id === id);
+      const problem = current && snapshotVerifier ? snapshotVerifier(current, data) : null;
+      if (problem) {
+        const error = `Integrity check failed — ${problem} The retry was stopped so you don't get a different result than the original.`;
+        patch(id, { status: "failed", step: "Integrity check failed", error, fatal: true });
+        notify(id, "error", error);
         return;
       }
       dismissExportJob(id);
