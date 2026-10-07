@@ -391,6 +391,55 @@ function ReportBuilder() {
     startJob(label, inp, w);
   };
 
+  const importRef = useRef<HTMLInputElement>(null);
+  const importSettings = async (file: File) => {
+    const known = ["HTML report", "PDF report", "Jupyter notebook", "Interactive HTML notebook", "Excel workbook"];
+    // Open the print window now, while the click still counts, in case it's a PDF.
+    let w: Window | null = null;
+    let parsed: { exportType?: unknown; settings?: Record<string, unknown> };
+    try {
+      const text = await file.text();
+      parsed = JSON.parse(text);
+    } catch {
+      toast.error("That file isn't valid JSON.");
+      return;
+    }
+    const label = String(parsed.exportType ?? "");
+    const st = parsed.settings;
+    if (!known.includes(label) || !st || typeof st !== "object") {
+      toast.error("This doesn't look like an export settings file.");
+      return;
+    }
+    const validIds = new Set(SECTIONS.map((x) => x.id as string));
+    const sections = (Array.isArray(st.sections) ? (st.sections as unknown[]) : [])
+      .map(String)
+      .filter((x) => validIds.has(x)) as Section[];
+    if (["HTML report", "PDF report"].includes(label) && sections.length === 0) {
+      toast.error("The settings file has no valid report sections.");
+      return;
+    }
+    const inp: Inputs = {
+      ...captureInputs(),
+      sections: sections.length ? sections : [...enabled],
+      title: typeof st.title === "string" ? st.title : title,
+      note: typeof st.note === "string" ? st.note : note,
+      ...(label === "Interactive HTML notebook" ? { snapshots: loadSnapshots(dataset.name) } : {}),
+    };
+    if (st.fingerprint) {
+      const fp = datasetFingerprint(dataset);
+      if (fp !== st.fingerprint)
+        toast.warning(
+          `Heads up: these settings were saved for "${String(st.dataset ?? "another dataset")}" (#${String(st.fingerprint)}), but the loaded data is #${fp}. The export will use the data you have loaded now.`,
+          { duration: 9000 },
+        );
+    }
+    if (label === "PDF report") w = window.open("", "_blank", "width=1024,height=768");
+    setEnabled(new Set(inp.sections));
+    setTitle(inp.title);
+    setNote(inp.note);
+    startJob(label, inp, w);
+  };
+
   if (!maybeDataset)
     return (
       <div className="neo p-10 text-center">
@@ -490,6 +539,27 @@ function ReportBuilder() {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-border/50">
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void importSettings(f);
+            }}
+          />
+          <button
+            onClick={() => importRef.current?.click()}
+            className="neo-btn px-5 py-2.5 text-sm font-semibold flex items-center gap-2 hover:text-primary transition-colors mr-auto"
+            title="Start a new export from a downloaded settings JSON file"
+          >
+            <FileDown className="size-4 rotate-180" aria-hidden="true" />
+            Import settings
+          </button>
           <button
             onClick={downloadPDF}
             className="neo-btn px-5 py-2.5 text-sm font-semibold flex items-center gap-2 hover:text-primary transition-colors"
