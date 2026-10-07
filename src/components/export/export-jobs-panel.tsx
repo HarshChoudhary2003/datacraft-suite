@@ -244,6 +244,32 @@ export function ExportJobsPanel() {
                             </div>
                           ))}
                       </dl>
+                      <button
+                        type="button"
+                        className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                        onClick={() => {
+                          const payload = {
+                            exportType: job.label,
+                            jobId: job.id,
+                            status: job.status,
+                            createdAt: new Date(job.createdAt).toISOString(),
+                            finishedAt: job.finishedAt ? new Date(job.finishedAt).toISOString() : null,
+                            snapshotSaved: Boolean(job.hasSnapshot),
+                            settings: job.settings,
+                          };
+                          const url = URL.createObjectURL(
+                            new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+                          );
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `${String(job.settings?.file ?? "export")}_${job.id}_settings.json`;
+                          a.click();
+                          setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        }}
+                        aria-label={`Download saved settings for ${job.label} as JSON`}
+                      >
+                        <Download className="size-3" aria-hidden="true" /> Download settings (JSON)
+                      </button>
                     </details>
                   )}
                   <p
