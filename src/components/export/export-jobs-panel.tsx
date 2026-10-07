@@ -212,13 +212,39 @@ export function ExportJobsPanel() {
                     )}
                   </div>
                   {job.settings && (
-                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate" title={JSON.stringify(job.settings, null, 2)}>
-                      {String(job.settings.dataset ?? "")}
-                      {job.settings.rows != null && ` · ${job.settings.rows} rows`}
-                      {job.settings.role != null && ` · ${String(job.settings.role)}`}
-                      {Array.isArray(job.settings.sections) && ` · ${job.settings.sections.length} sections`}
-                      {job.hasSnapshot ? " · inputs saved" : ""}
-                    </p>
+                    <details className="mt-0.5 group">
+                      <summary className="text-[11px] text-muted-foreground truncate cursor-pointer list-none">
+                        {String(job.settings.dataset ?? "")}
+                        {job.settings.rows != null && ` · ${job.settings.rows} rows`}
+                        {job.settings.fingerprint != null && (
+                          <span className="font-mono"> · #{String(job.settings.fingerprint)}</span>
+                        )}
+                        {job.hasSnapshot ? " · snapshot saved" : " · no snapshot"}
+                        <span className="text-primary"> · view settings</span>
+                      </summary>
+                      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-md bg-muted/40 p-2 text-[11px]">
+                        {(
+                          [
+                            ["Dataset", job.settings.dataset],
+                            ["Fingerprint", job.settings.fingerprint ?? "not recorded"],
+                            ["Size", `${job.settings.rows ?? "?"} rows × ${job.settings.columns ?? "?"} columns`],
+                            ["Columns", Array.isArray(job.settings.columnNames) ? (job.settings.columnNames as string[]).join(", ") : undefined],
+                            ["Role", job.settings.role],
+                            ["Sections", Array.isArray(job.settings.sections) ? (job.settings.sections as string[]).join(", ") : undefined],
+                            ["Title", job.settings.title],
+                            ["Note", job.settings.note],
+                            ["Captured", typeof job.settings.capturedAt === "number" ? new Date(job.settings.capturedAt).toLocaleString() : undefined],
+                          ] as Array<[string, unknown]>
+                        )
+                          .filter(([, v]) => v != null && v !== "")
+                          .map(([k, v]) => (
+                            <div key={k} className="contents">
+                              <dt className="text-muted-foreground">{k}</dt>
+                              <dd className="break-words font-mono">{String(v)}</dd>
+                            </div>
+                          ))}
+                      </dl>
+                    </details>
                   )}
                   <p
                     className={`text-xs mt-0.5 ${job.status === "failed" ? "text-destructive" : "text-muted-foreground"}`}
