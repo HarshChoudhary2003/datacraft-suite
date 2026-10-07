@@ -99,8 +99,25 @@ interface ExportInputs {
   snapshots?: ReturnType<typeof loadSnapshots>;
 }
 
+/** Stable FNV-1a fingerprint of a dataset's columns and rows. */
+function datasetFingerprint(ds: { columns: string[]; rows: Record<string, unknown>[] }): string {
+  let h = 0x811c9dc5;
+  const feed = (str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+  };
+  feed(ds.columns.join("\u0001"));
+  for (const r of ds.rows) for (const c of ds.columns) feed("\u0002" + String(r[c] ?? ""));
+  return (h >>> 0).toString(16).padStart(8, "0") + "-" + ds.rows.length.toString(36);
+}
+
 function ReportBuilder() {
-  const { dataset, role } = useDataset();
+  const { dataset: maybeDataset, role } = useDataset();
+  // Retries rebuild from saved snapshots, so the handlers below must exist
+  // even when no dataset is loaded; the empty state is rendered at the end.
+  const dataset = maybeDataset!;
   const [enabled, setEnabled] = useState<Set<Section>>(new Set(SECTIONS.map((s) => s.id)));
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [note, setNote] = useState(DEFAULT_NOTE);
@@ -118,17 +135,7 @@ function ReportBuilder() {
     return () => offs.forEach((o) => o());
   }, []);
 
-  if (!dataset)
-    return (
-      <div className="neo p-10 text-center">
-        No dataset.{" "}
-        <Link to="/" className="text-primary underline">
-          Upload
-        </Link>
-      </div>
-    );
-
-  const stem = dataset.name.replace(/\.(csv|xlsx?|json)$/i, "");
+  const stem = (maybeDataset?.name ?? "").replace(/\.(csv|xlsx?|json)$/i, "");
   const dl = (
     content: string | Blob,
     filename: string,
@@ -208,6 +215,8 @@ function ReportBuilder() {
           note: inp.note,
           capturedAt: inp.capturedAt,
           file: stemOf,
+          fingerprint: datasetFingerprint(inp.dataset),
+          columnNames: inp.dataset.columns.slice(0, 12),
         },
         data: inp,
       },
@@ -354,6 +363,15 @@ function ReportBuilder() {
     startJob(label, inp, w);
   };
 
+  if (!maybeDataset)
+    return (
+      <div className="neo p-10 text-center">
+        No dataset loaded. Saved exports below can still be retried from their snapshots.{" "}
+        <Link to="/" className="text-primary underline">
+          Upload
+        </Link>
+      </div>
+    );
 
   return (
     <motion.div variants={STAGGER} initial="hidden" animate="show" className="space-y-8">
