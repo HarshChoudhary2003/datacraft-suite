@@ -26,6 +26,15 @@ import {
   yieldToBrowser,
 } from "@/lib/export-jobs";
 import { ExportJobsPanel } from "@/components/export/export-jobs-panel";
+import { validateImportedSettings, type ImportValidation } from "@/lib/import-settings";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/export")({
   head: () => ({ meta: [{ title: "Export Report — DataIQ Pro" }] }),
