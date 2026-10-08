@@ -7,6 +7,15 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import {
+  BrainCircuit,
+  Briefcase,
+  ChartColumn,
+  Cpu,
+  Database,
+  FlaskConical,
+  type LucideIcon,
+} from "lucide-react";
 import { type Dataset } from "@/lib/stats";
 import { clearCurrentDataset, loadCurrentDataset } from "@/lib/current-dataset";
 import { runPipeline, type PipelineProgress, type PipelineResult } from "@/lib/processing-pipeline";
