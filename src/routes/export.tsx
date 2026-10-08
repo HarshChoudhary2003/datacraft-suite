@@ -26,6 +26,15 @@ import {
   yieldToBrowser,
 } from "@/lib/export-jobs";
 import { ExportJobsPanel } from "@/components/export/export-jobs-panel";
+import { validateImportedSettings, type ImportValidation } from "@/lib/import-settings";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/export")({
   head: () => ({ meta: [{ title: "Export Report — DataIQ Pro" }] }),
@@ -392,52 +401,68 @@ function ReportBuilder() {
   };
 
   const importRef = useRef<HTMLInputElement>(null);
+  const [importReview, setImportReview] = useState<{
+    v: ImportValidation;
+    sections: Set<Section>;
+    title: string;
+    note: string;
+  } | null>(null);
+
   const importSettings = async (file: File) => {
-    const known = ["HTML report", "PDF report", "Jupyter notebook", "Interactive HTML notebook", "Excel workbook"];
-    // Open the print window now, while the click still counts, in case it's a PDF.
-    let w: Window | null = null;
-    let parsed: { exportType?: unknown; settings?: Record<string, unknown> };
+    let parsed: unknown;
     try {
-      const text = await file.text();
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(await file.text());
     } catch {
       toast.error("That file isn't valid JSON.");
       return;
     }
-    const label = String(parsed.exportType ?? "");
-    const st = parsed.settings;
-    if (!known.includes(label) || !st || typeof st !== "object") {
-      toast.error("This doesn't look like an export settings file.");
+    const v = validateImportedSettings(parsed);
+    if (v.fingerprint) {
+      const fp = datasetFingerprint(dataset);
+      if (fp !== v.fingerprint)
+        v.warnings.push(
+          `These settings were saved for "${v.datasetName ?? "another dataset"}" (#${v.fingerprint}), but the loaded data is #${fp}. The export will use the data you have loaded now.`,
+        );
+    }
+    if (!v.exportTypeValid && v.errors.length > 0 && !v.exportType) {
+      toast.error(v.errors[0]);
       return;
     }
-    const validIds = new Set(SECTIONS.map((x) => x.id as string));
-    const sections = (Array.isArray(st.sections) ? (st.sections as unknown[]) : [])
-      .map(String)
-      .filter((x) => validIds.has(x)) as Section[];
-    if (["HTML report", "PDF report"].includes(label) && sections.length === 0) {
-      toast.error("The settings file has no valid report sections.");
+    // Open the review step so the user can inspect validation and edit before starting.
+    setImportReview({
+      v,
+      sections: new Set(
+        (v.validSections.length ? v.validSections : [...enabled]) as Section[],
+      ),
+      title: v.title ?? title,
+      note: v.note ?? note,
+    });
+  };
+
+  const startImportedJob = () => {
+    if (!importReview) return;
+    const { v, sections, title: t, note: n } = importReview;
+    if (v.isReport && sections.size === 0) {
+      toast.error("Select at least one report section first.");
       return;
     }
     const inp: Inputs = {
       ...captureInputs(),
-      sections: sections.length ? sections : [...enabled],
-      title: typeof st.title === "string" ? st.title : title,
-      note: typeof st.note === "string" ? st.note : note,
-      ...(label === "Interactive HTML notebook" ? { snapshots: loadSnapshots(dataset.name) } : {}),
+      sections: sections.size ? ([...sections] as Section[]) : [...enabled],
+      title: t,
+      note: n,
+      ...(v.exportType === "Interactive HTML notebook"
+        ? { snapshots: loadSnapshots(dataset.name) }
+        : {}),
     };
-    if (st.fingerprint) {
-      const fp = datasetFingerprint(dataset);
-      if (fp !== st.fingerprint)
-        toast.warning(
-          `Heads up: these settings were saved for "${String(st.dataset ?? "another dataset")}" (#${String(st.fingerprint)}), but the loaded data is #${fp}. The export will use the data you have loaded now.`,
-          { duration: 9000 },
-        );
-    }
-    if (label === "PDF report") w = window.open("", "_blank", "width=1024,height=768");
+    // Open the print window now, while the click still counts, in case it's a PDF.
+    const w =
+      v.exportType === "PDF report" ? window.open("", "_blank", "width=1024,height=768") : null;
     setEnabled(new Set(inp.sections));
     setTitle(inp.title);
     setNote(inp.note);
-    startJob(label, inp, w);
+    setImportReview(null);
+    startJob(v.exportType, inp, w);
   };
 
   if (!maybeDataset)
