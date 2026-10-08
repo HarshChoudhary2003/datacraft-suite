@@ -7,6 +7,15 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import {
+  BrainCircuit,
+  Briefcase,
+  ChartColumn,
+  Cpu,
+  Database,
+  FlaskConical,
+  type LucideIcon,
+} from "lucide-react";
 import { type Dataset } from "@/lib/stats";
 import { clearCurrentDataset, loadCurrentDataset } from "@/lib/current-dataset";
 import { runPipeline, type PipelineProgress, type PipelineResult } from "@/lib/processing-pipeline";
@@ -24,13 +33,13 @@ export type Role =
   | "data_engineer";
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const ROLES: { id: Role; label: string; short: string; emoji: string }[] = [
-  { id: "data_analyst", label: "Data Analyst", short: "Analyst", emoji: "📊" },
-  { id: "business_analyst", label: "Business Analyst", short: "BA", emoji: "💼" },
-  { id: "data_scientist", label: "Data Scientist", short: "Scientist", emoji: "🔬" },
-  { id: "ml_engineer", label: "ML Engineer", short: "ML", emoji: "🤖" },
-  { id: "ai_engineer", label: "AI Engineer", short: "AI", emoji: "🧠" },
-  { id: "data_engineer", label: "Data Engineer", short: "DE", emoji: "🛠️" },
+export const ROLES: { id: Role; label: string; short: string; icon: LucideIcon }[] = [
+  { id: "data_analyst", label: "Data Analyst", short: "Analyst", icon: ChartColumn },
+  { id: "business_analyst", label: "Business Analyst", short: "BA", icon: Briefcase },
+  { id: "data_scientist", label: "Data Scientist", short: "Scientist", icon: FlaskConical },
+  { id: "ml_engineer", label: "ML Engineer", short: "ML", icon: Cpu },
+  { id: "ai_engineer", label: "AI Engineer", short: "AI", icon: BrainCircuit },
+  { id: "data_engineer", label: "Data Engineer", short: "DE", icon: Database },
 ];
 
 interface Ctx {
