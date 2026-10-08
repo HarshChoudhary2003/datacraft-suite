@@ -91,8 +91,13 @@ function GuidePage() {
       <div className="neo p-6 bg-gradient-to-br from-primary/10 to-transparent border-l-4 border-primary space-y-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-            <Sparkles className="size-3.5 text-primary" /> Recommended for {roleMeta?.emoji}{" "}
-            {roleMeta?.label}
+            <Sparkles className="size-3.5 text-primary" /> Recommended for{" "}
+            {roleMeta ? (
+              <span className="inline-flex items-center gap-1 normal-case">
+                <roleMeta.icon className="size-3.5 text-primary" strokeWidth={2.25} />
+                {roleMeta.label}
+              </span>
+            ) : null}
           </div>
           <h2 className="text-lg font-bold mt-1">{preset.mission}</h2>
         </div>
