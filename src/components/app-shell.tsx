@@ -478,8 +478,9 @@ function RolePicker({ role, setRole }: { role: Role; setRole: (r: Role) => void 
             key={r.id}
             role="radio"
             aria-checked={role === r.id}
+            aria-label={r.label}
             onClick={() => setRole(r.id)}
-            className={`relative text-left px-2 py-2 rounded-lg text-xs transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary ${role === r.id ? "text-primary font-semibold" : "neo-btn"}`}
+            className={`relative text-left px-2 py-2 rounded-lg text-xs transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${role === r.id ? "text-primary font-semibold" : "neo-btn"}`}
           >
             {role === r.id && (
               <motion.div
