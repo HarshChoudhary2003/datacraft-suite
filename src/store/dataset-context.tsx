@@ -57,10 +57,13 @@ export function RoleIcon({
   role,
   size = "sm",
   className = "",
+  label,
 }: {
   role: Role;
   size?: keyof typeof ROLE_ICON_SIZES;
   className?: string;
+  /** When set, the tile is announced as an image with this label; otherwise it is decorative. */
+  label?: string;
 }) {
   const meta = ROLES.find((r) => r.id === role);
   if (!meta) return null;
@@ -68,14 +71,16 @@ export function RoleIcon({
   const s = ROLE_ICON_SIZES[size];
   return (
     <span
-      className={`grid shrink-0 place-items-center text-primary-foreground ${s.tile} ${className}`}
+      className={`grid shrink-0 place-items-center ${s.tile} ${className}`}
       style={{
+        // White icon on a saturated gradient keeps ≥4.5:1 contrast in both themes.
+        color: "#fff",
         background: `linear-gradient(135deg, var(--role-${meta.tone}), var(--role-${meta.tone}-soft))`,
-        boxShadow: `0 2px 10px -2px color-mix(in oklab, var(--role-${meta.tone}) 45%, transparent)`,
+        boxShadow: `0 2px 10px -2px color-mix(in oklab, var(--role-${meta.tone}) 45%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--role-${meta.tone}) 70%, black)`,
       }}
-      aria-hidden="true"
+      {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
     >
-      <Icon className={s.icon} strokeWidth={2.25} />
+      <Icon className={s.icon} strokeWidth={2.25} aria-hidden="true" />
     </span>
   );
 }
