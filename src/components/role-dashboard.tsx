@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight, ShieldCheck, Star, Circle, Route as RouteIcon } from "lucide-react";
-import { useDataset, ROLES } from "@/store/dataset-context";
+import { useDataset, ROLES, RoleIcon } from "@/store/dataset-context";
 import { presetFor, computeMetric, type AccessLevel } from "@/lib/role-presets";
 
 const accessMeta: Record<AccessLevel, { label: string; icon: typeof Star; cls: string }> = {

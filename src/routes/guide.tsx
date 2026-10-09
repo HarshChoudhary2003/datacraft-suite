@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useDataset, ROLES } from "@/store/dataset-context";
+import { useDataset, ROLES, RoleIcon } from "@/store/dataset-context";
 import { presetFor } from "@/lib/role-presets";
 
 export const Route = createFileRoute("/guide")({

@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDataset, ROLES, type Role } from "@/store/dataset-context";
+import { useDataset, ROLES, RoleIcon, type Role } from "@/store/dataset-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportNotificationsBell } from "@/components/export/export-notifications";
 import { ProcessingBreakdown } from "@/components/processing-breakdown";
