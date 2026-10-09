@@ -93,8 +93,8 @@ function GuidePage() {
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
             <Sparkles className="size-3.5 text-primary" /> Recommended for{" "}
             {roleMeta ? (
-              <span className="inline-flex items-center gap-1 normal-case">
-                <roleMeta.icon className="size-3.5 text-primary" strokeWidth={2.25} />
+              <span className="inline-flex items-center gap-1.5 normal-case font-medium">
+                <RoleIcon role={roleMeta.id} size="xs" />
                 {roleMeta.label}
               </span>
             ) : null}

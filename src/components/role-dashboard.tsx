@@ -22,12 +22,7 @@ export function RoleDashboard() {
       {/* Header + mission */}
       <div className="neo p-5 bg-gradient-to-br from-primary/10 to-transparent border-l-4 border-primary">
         <div className="flex flex-wrap items-center gap-3">
-          <span
-            className="size-10 rounded-xl grid place-items-center gradient-bg text-white shadow-sm shrink-0"
-            aria-hidden="true"
-          >
-            {roleMeta ? <roleMeta.icon className="size-5" strokeWidth={2.25} /> : null}
-          </span>
+          <RoleIcon role={role} size="lg" />
           <div className="min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
               <Sparkles className="size-3.5 text-primary" /> {roleMeta?.label} workspace

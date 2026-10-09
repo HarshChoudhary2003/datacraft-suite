@@ -488,10 +488,10 @@ function RolePicker({ role, setRole }: { role: Role; setRole: (r: Role) => void 
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
-            <span className="mr-1.5 z-10 grid place-items-center text-primary/90" aria-hidden="true">
-              <r.icon className="size-3.5" strokeWidth={2.25} />
+            <span className="relative z-10 flex items-center gap-1.5" aria-hidden="false">
+              <RoleIcon role={r.id} size="sm" />
+              <span>{r.short}</span>
             </span>
-            <span className="z-10">{r.short}</span>
           </button>
         ))}
       </div>
