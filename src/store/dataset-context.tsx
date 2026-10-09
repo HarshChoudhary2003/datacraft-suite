@@ -45,9 +45,9 @@ export const ROLES: { id: Role; label: string; short: string; tone: RoleTone; ic
 export type RoleTone = "analyst" | "business" | "scientist" | "ml" | "ai" | "engineer";
 
 const ROLE_ICON_SIZES = {
-  xs: { tile: "size-4.5 rounded-md", icon: "size-3" },
-  sm: { tile: "size-6 rounded-lg", icon: "size-3.5" },
-  md: { tile: "size-7 rounded-lg", icon: "size-4" },
+  xs: { tile: "size-5 rounded-md", icon: "size-3" },
+  sm: { tile: "size-7 rounded-lg", icon: "size-4" },
+  md: { tile: "size-8 rounded-lg", icon: "size-4.5" },
   lg: { tile: "size-10 rounded-xl", icon: "size-5" },
 } as const;
 
