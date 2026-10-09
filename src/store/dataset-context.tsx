@@ -33,14 +33,52 @@ export type Role =
   | "data_engineer";
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const ROLES: { id: Role; label: string; short: string; icon: LucideIcon }[] = [
-  { id: "data_analyst", label: "Data Analyst", short: "Analyst", icon: ChartColumn },
-  { id: "business_analyst", label: "Business Analyst", short: "BA", icon: Briefcase },
-  { id: "data_scientist", label: "Data Scientist", short: "Scientist", icon: FlaskConical },
-  { id: "ml_engineer", label: "ML Engineer", short: "ML", icon: Cpu },
-  { id: "ai_engineer", label: "AI Engineer", short: "AI", icon: BrainCircuit },
-  { id: "data_engineer", label: "Data Engineer", short: "DE", icon: Database },
+export const ROLES: { id: Role; label: string; short: string; tone: RoleTone; icon: LucideIcon }[] = [
+  { id: "data_analyst", label: "Data Analyst", short: "Analyst", tone: "analyst", icon: ChartColumn },
+  { id: "business_analyst", label: "Business Analyst", short: "BA", tone: "business", icon: Briefcase },
+  { id: "data_scientist", label: "Data Scientist", short: "Scientist", tone: "scientist", icon: FlaskConical },
+  { id: "ml_engineer", label: "ML Engineer", short: "ML", tone: "ml", icon: Cpu },
+  { id: "ai_engineer", label: "AI Engineer", short: "AI", tone: "ai", icon: BrainCircuit },
+  { id: "data_engineer", label: "Data Engineer", short: "DE", tone: "engineer", icon: Database },
 ];
+
+export type RoleTone = "analyst" | "business" | "scientist" | "ml" | "ai" | "engineer";
+
+const ROLE_ICON_SIZES = {
+  xs: { tile: "size-5 rounded-md", icon: "size-3" },
+  sm: { tile: "size-7 rounded-lg", icon: "size-4" },
+  md: { tile: "size-8 rounded-lg", icon: "size-4.5" },
+  lg: { tile: "size-10 rounded-xl", icon: "size-5" },
+} as const;
+
+/** Colorful gradient badge for a role's icon, themed by role color tokens. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function RoleIcon({
+  role,
+  size = "sm",
+  className = "",
+}: {
+  role: Role;
+  size?: keyof typeof ROLE_ICON_SIZES;
+  className?: string;
+}) {
+  const meta = ROLES.find((r) => r.id === role);
+  if (!meta) return null;
+  const Icon = meta.icon;
+  const s = ROLE_ICON_SIZES[size];
+  return (
+    <span
+      className={`grid shrink-0 place-items-center text-primary-foreground ${s.tile} ${className}`}
+      style={{
+        background: `linear-gradient(135deg, var(--role-${meta.tone}), var(--role-${meta.tone}-soft))`,
+        boxShadow: `0 2px 10px -2px color-mix(in oklab, var(--role-${meta.tone}) 45%, transparent)`,
+      }}
+      aria-hidden="true"
+    >
+      <Icon className={s.icon} strokeWidth={2.25} />
+    </span>
+  );
+}
 
 interface Ctx {
   dataset: Dataset | null;
