@@ -119,18 +119,19 @@
   --gradient-glow: linear-gradient(135deg, oklch(0.62 0.26 275 / 0.2), oklch(0.7 0.22 195 / 0.2));
 
   /* Role identity colors: base + soft (gradient end) per role */
+  /* Gradient ends stay ≤0.62 lightness so white icons keep ≥3:1 contrast. */
   --role-analyst: oklch(0.55 0.2 250);
-  --role-analyst-soft: oklch(0.7 0.15 245);
-  --role-business: oklch(0.68 0.15 70);
-  --role-business-soft: oklch(0.8 0.13 75);
+  --role-analyst-soft: oklch(0.62 0.15 245);
+  --role-business: oklch(0.6 0.15 70);
+  --role-business-soft: oklch(0.62 0.13 75);
   --role-scientist: oklch(0.58 0.14 165);
-  --role-scientist-soft: oklch(0.72 0.13 168);
+  --role-scientist-soft: oklch(0.62 0.13 168);
   --role-ml: oklch(0.6 0.19 40);
-  --role-ml-soft: oklch(0.74 0.15 50);
+  --role-ml-soft: oklch(0.62 0.15 50);
   --role-ai: oklch(0.55 0.23 300);
-  --role-ai-soft: oklch(0.68 0.18 305);
+  --role-ai-soft: oklch(0.62 0.18 305);
   --role-engineer: oklch(0.55 0.16 230);
-  --role-engineer-soft: oklch(0.68 0.13 225);
+  --role-engineer-soft: oklch(0.62 0.13 225);
 }
 
 .dark {
