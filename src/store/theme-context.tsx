@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 export type Theme = "light" | "dark" | "cyberpunk" | "emerald" | "oled";
 
@@ -20,10 +20,21 @@ function initial(): Theme {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
+  // First effect run adopts the persisted theme instead of persisting the
+  // SSR default "light" — otherwise a hydration remount clobbers dark mode.
+  const adoptRef = useRef(true);
   useEffect(() => {
     setTheme(initial());
   }, []);
   useEffect(() => {
+    if (adoptRef.current) {
+      adoptRef.current = false;
+      const stored = initial();
+      if (stored !== theme) {
+        setTheme(stored);
+        return;
+      }
+    }
     const root = document.documentElement;
     ALL_THEMES.forEach((t) => root.classList.remove(t));
     if (theme !== "light") {

@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDataset, ROLES, RoleIcon, type Role } from "@/store/dataset-context";
+import { useDataset, ROLES, type Role } from "@/store/dataset-context";
+import { RolePicker } from "@/components/role-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportNotificationsBell } from "@/components/export/export-notifications";
 import { ProcessingBreakdown } from "@/components/processing-breakdown";
@@ -468,34 +469,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function RolePicker({ role, setRole }: { role: Role; setRole: (r: Role) => void }) {
-  return (
-    <div className="neo p-3">
-      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Your Role</div>
-      <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Select your role">
-        {ROLES.map((r) => (
-          <button
-            key={r.id}
-            role="radio"
-            aria-checked={role === r.id}
-            aria-label={r.label}
-            onClick={() => setRole(r.id)}
-            className={`relative text-left px-2 py-2 rounded-lg text-xs transition-all outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring ${role === r.id ? "text-primary font-semibold" : "neo-btn"}`}
-          >
-            {role === r.id && (
-              <motion.div
-                layoutId="role-active"
-                className="absolute inset-0 neo-inset rounded-lg -z-10"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-1.5" aria-hidden="false">
-              <RoleIcon role={r.id} size="sm" />
-              <span>{r.short}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
