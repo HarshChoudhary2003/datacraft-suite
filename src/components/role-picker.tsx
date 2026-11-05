@@ -56,7 +56,7 @@ export function RolePicker({ role, setRole }: { role: Role; setRole: (r: Role) =
             tabIndex={role === r.id ? 0 : -1}
             onClick={() => setRole(r.id)}
             onKeyDown={(e) => onKeyDown(e, i)}
-            className={`relative text-left px-2 py-2 rounded-lg text-xs transition-all outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring ${role === r.id ? "text-primary font-semibold" : "neo-btn"}`}
+            className={`relative text-left px-2 py-2 rounded-lg text-xs transition-all outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring ${role === r.id ? "text-role-label font-semibold" : "neo-btn"}`}
           >
             {role === r.id && (
               <motion.div
