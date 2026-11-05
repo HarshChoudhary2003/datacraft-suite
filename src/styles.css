@@ -57,6 +57,8 @@
   --color-role-ml: var(--role-ml);
   --color-role-ai: var(--role-ai);
   --color-role-engineer: var(--role-engineer);
+  /* Accessible accent for small selected text; lightened in dark themes to hold 4.5:1 */
+  --color-role-label: var(--role-label);
 }
 
 :root {
@@ -132,6 +134,7 @@
   --role-ai-soft: oklch(0.62 0.18 305);
   --role-engineer: oklch(0.55 0.16 230);
   --role-engineer-soft: oklch(0.62 0.13 225);
+  --role-label: var(--primary);
 }
 
 .dark {
