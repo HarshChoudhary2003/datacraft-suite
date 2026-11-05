@@ -134,7 +134,8 @@
   --role-ai-soft: oklch(0.62 0.18 305);
   --role-engineer: oklch(0.55 0.16 230);
   --role-engineer-soft: oklch(0.62 0.13 225);
-  --role-label: var(--primary);
+  /* Deepened accent: small light-theme text must reach 4.5:1 on the card backdrop */
+  --role-label: oklch(0.5 0.22 275);
 }
 
 .dark {
@@ -177,8 +178,8 @@
   --role-ai-soft: oklch(0.62 0.17 305);
   --role-engineer: oklch(0.58 0.16 230);
   --role-engineer-soft: oklch(0.62 0.13 225);
-  /* Lightened accent: small dark-theme text must reach 4.5:1 on the card backdrop */
-  --role-label: oklch(0.85 0.12 285);
+  /* Lightened, low-chroma accent: small dark-theme text must reach 4.5:1 on the card backdrop */
+  --role-label: oklch(0.93 0.05 285);
 }
 
 .cyberpunk {
