@@ -1,6 +1,7 @@
 import { useRef, type KeyboardEvent } from "react";
 import { motion } from "framer-motion";
 import { ROLES, RoleIcon, type Role } from "@/store/dataset-context";
+import { nextRoleIndex } from "@/lib/role-picker-keys";
 
 /**
  * "Your Role" radio group.
@@ -17,27 +18,11 @@ export function RolePicker({ role, setRole }: { role: Role; setRole: (r: Role) =
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    switch (e.key) {
-      case "ArrowDown":
-      case "ArrowRight":
-        e.preventDefault();
-        move(index + 1);
-        break;
-      case "ArrowUp":
-      case "ArrowLeft":
-        e.preventDefault();
-        move(index - 1);
-        break;
-      case "Home":
-        e.preventDefault();
-        move(0);
-        break;
-      case "End":
-        e.preventDefault();
-        move(ROLES.length - 1);
-        break;
-      // Space/Enter activate the focused button natively.
-    }
+    // Space/Enter activate the focused button natively.
+    const next = nextRoleIndex(e.key, index, ROLES.length);
+    if (next === null) return;
+    e.preventDefault();
+    move(next);
   };
 
   return (
