@@ -5,6 +5,15 @@
 // a transient authorization hiccup). This queue makes every export an
 // observable job: it reports progress, retries transient failures with
 // backoff, and keeps a terminal error visible instead of failing silently.
+import { recordSuccessfulReportExport } from "@/lib/weekly-report-exports";
+
+declare global {
+  interface Window {
+    __lovableEvents?: {
+      track?: (event: string, properties?: Record<string, unknown>) => string | null;
+    };
+  }
+}
 
 export type ExportJobStatus = "queued" | "running" | "retrying" | "done" | "failed" | "canceled";
 
@@ -393,6 +402,16 @@ async function execute(id: string) {
     if (controller.signal.aborted) {
       patch(id, { status: "canceled", step: "Canceled", finishedAt: Date.now() });
     } else {
+      recordSuccessfulReportExport(job.label);
+      if (job.label === "HTML report") {
+        window.__lovableEvents?.track?.("project.analysis_report_export_succeeded", {
+          format: "html",
+        });
+      } else if (job.label === "PDF report") {
+        window.__lovableEvents?.track?.("project.analysis_report_export_succeeded", {
+          format: "pdf",
+        });
+      }
       patch(id, { status: "done", progress: 100, step: "Complete", finishedAt: Date.now() });
       const d = jobs.find((j) => j.id === id)?.download;
       notify(id, "success", d ? `${d.filename} is ready to download` : "Export complete");
@@ -409,6 +428,15 @@ async function execute(id: string) {
     const current = jobs.find((j) => j.id === id);
     const canRetry = !fatal && current ? attempt < current.maxAttempts : false;
     if (!canRetry) {
+      if (job.label === "HTML report") {
+        window.__lovableEvents?.track?.("project.analysis_report_export_failed", {
+          format: "html",
+        });
+      } else if (job.label === "PDF report") {
+        window.__lovableEvents?.track?.("project.analysis_report_export_failed", {
+          format: "pdf",
+        });
+      }
       patch(id, {
         status: "failed",
         step: fatal ? "Action needed" : "Failed",

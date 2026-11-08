@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "events": {
+    "project.analysis_report_export_failed": {
+      "event_schema_version": 1,
+      "description": "An HTML or PDF analysis report export reached a final failure after retries or an unrecoverable error.",
+      "privacy": {
+        "contains_pii": false,
+        "purpose": "product_analytics"
+      },
+      "properties_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format"
+        ],
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "html",
+              "pdf"
+            ]
+          }
+        }
+      }
+    },
+    "project.analysis_report_export_succeeded": {
+      "event_schema_version": 1,
+      "description": "An HTML or PDF analysis report export completed successfully.",
+      "privacy": {
+        "contains_pii": false,
+        "purpose": "product_analytics"
+      },
+      "properties_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format"
+        ],
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "html",
+              "pdf"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

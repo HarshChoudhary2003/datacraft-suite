@@ -1,0 +1,1 @@
+- Keep weekly report-export counts as a browser-local aggregate recorded only when HTML/PDF report jobs complete; export-job history is capped and not suitable as the metric source.
