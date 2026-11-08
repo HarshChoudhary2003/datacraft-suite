@@ -5,6 +5,7 @@
 // a transient authorization hiccup). This queue makes every export an
 // observable job: it reports progress, retries transient failures with
 // backoff, and keeps a terminal error visible instead of failing silently.
+import { recordSuccessfulReportExport } from "@/lib/weekly-report-exports";
 
 export type ExportJobStatus = "queued" | "running" | "retrying" | "done" | "failed" | "canceled";
 
@@ -393,6 +394,7 @@ async function execute(id: string) {
     if (controller.signal.aborted) {
       patch(id, { status: "canceled", step: "Canceled", finishedAt: Date.now() });
     } else {
+      recordSuccessfulReportExport(job.label);
       patch(id, { status: "done", progress: 100, step: "Complete", finishedAt: Date.now() });
       const d = jobs.find((j) => j.id === id)?.download;
       notify(id, "success", d ? `${d.filename} is ready to download` : "Export complete");

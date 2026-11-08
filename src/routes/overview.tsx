@@ -37,6 +37,7 @@ import {
 import { CHART_COLORS, tooltipStyle, axisStyle, gridStyle } from "@/lib/chart-theme";
 import { RoleDashboard } from "@/components/role-dashboard";
 import { ProcessingTelemetryCard } from "@/components/processing-telemetry";
+import { WeeklyReportExportsCard } from "@/components/weekly-report-exports-card";
 
 export const Route = createFileRoute("/overview")({
   head: () => ({ meta: [{ title: "Dataset Overview — DataIQ Pro" }] }),
@@ -238,6 +239,10 @@ function OverviewPage() {
 
       <motion.div variants={item}>
         <ProcessingTelemetryCard />
+      </motion.div>
+
+      <motion.div variants={item}>
+        <WeeklyReportExportsCard />
       </motion.div>
 
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
