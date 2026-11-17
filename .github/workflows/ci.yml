@@ -73,7 +73,7 @@ jobs:
         with: { bun-version: latest }
       - run: bun install --frozen-lockfile || bun install
       - name: Install Playwright Chromium
-        run: bunx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium
       - name: Start dev server
         run: bun run dev --port 8080 --host 127.0.0.1 > devserver.log 2>&1 &
       - name: E2E smoke flow (upload → correlation → export → codegen)
@@ -110,7 +110,7 @@ jobs:
       - name: Install deps
         run: |
           bun install --frozen-lockfile || bun install
-          pip install fastapi uvicorn pydantic pandas numpy scikit-learn httpx matplotlib
+          pip install fastapi uvicorn pydantic pandas numpy scikit-learn httpx matplotlib reportlab
       - name: Generate dataset
         run: node loadtest/gen_csv.mjs --rows 60000 --out loadtest/data/large.csv
       - name: UI render-pipeline benchmark

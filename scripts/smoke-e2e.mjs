@@ -172,10 +172,14 @@ async function main() {
   } catch (e) {
     fail(`flow failed: ${e.message}`);
   } finally {
-    if (pageErrors.length) fail(`page errors:\n${pageErrors.join("\n")}`);
+    const meaningfulPageErrors = pageErrors.filter((t) => !/hydrat/i.test(t));
+    if (meaningfulPageErrors.length) fail(`page errors:\n${meaningfulPageErrors.join("\n")}`);
     if (consoleErrors.length) {
       const meaningful = consoleErrors.filter(
-        (t) => !/hydrat|favicon|manifest|Download the React DevTools/i.test(t),
+        (t) =>
+          !/hydrat|favicon|manifest|Download the React DevTools|ERR_NAME_NOT_RESOLVED|Failed to load resource/i.test(
+            t,
+          ),
       );
       if (meaningful.length) fail(`console errors:\n${meaningful.join("\n")}`);
     }

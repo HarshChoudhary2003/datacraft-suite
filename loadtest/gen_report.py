@@ -325,12 +325,16 @@ def build_html(ctx, charts_b64):
 
 # ---- PDF --------------------------------------------------------------------
 def build_pdf(pdf_path: Path, ctx, charts_raw):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-                                    Image, PageBreak)
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+                                        Image, PageBreak)
+    except ImportError:
+        print("⚠ reportlab is not installed; skipping PDF generation.")
+        return
 
     specs = ctx["specs"]
     be = ctx["backend"]
@@ -424,9 +428,11 @@ def main():
     REPORTS.mkdir(parents=True, exist_ok=True)
     DATA.mkdir(parents=True, exist_ok=True)
     csv_path = DATA / "report.csv"
-    ui_file_json = Path("/tmp/ui_file.json")
-    ui_sweep_json = Path("/tmp/ui_sweep.json")
-    be_json = Path("/tmp/backend.json")
+    import tempfile
+    temp_dir = Path(tempfile.gettempdir())
+    ui_file_json = temp_dir / "ui_file.json"
+    ui_sweep_json = temp_dir / "ui_sweep.json"
+    be_json = temp_dir / "backend.json"
 
     node = shutil.which("node") or "node"
     print("\n[1/5] generating dataset…")
@@ -469,14 +475,13 @@ def main():
     (REPORTS / "benchmark_report.html").write_text(html)
     build_pdf(REPORTS / "benchmark_report.pdf", ctx, charts_raw)
 
-    DOCS.mkdir(parents=True, exist_ok=True)
-    shutil.copy(REPORTS / "benchmark_report.html", DOCS / "benchmark_report.html")
-    shutil.copy(REPORTS / "benchmark_report.pdf", DOCS / "benchmark_report.pdf")
-
-    print(f"\n✓ Report ready:")
-    print(f"   {REPORTS / 'benchmark_report.html'}")
-    print(f"   {REPORTS / 'benchmark_report.pdf'}")
-    print(f"   /mnt/documents/benchmark_report.{{html,pdf}}")
+    try:
+        DOCS.mkdir(parents=True, exist_ok=True)
+        shutil.copy(REPORTS / "benchmark_report.html", DOCS / "benchmark_report.html")
+        shutil.copy(REPORTS / "benchmark_report.pdf", DOCS / "benchmark_report.pdf")
+        print(f"   /mnt/documents/benchmark_report.{{html,pdf}}")
+    except Exception as e:
+        print(f"   Note: /mnt/documents not writable ({e}), skipping copy.")
 
 
 if __name__ == "__main__":
